@@ -64,7 +64,7 @@ export class StageSelectScene extends Phaser.Scene {
       fontSize: 16,
       bg: 0x6c7886,
       bgHover: 0x8a96a3
-    });
+    }).setDepth(Depth.Hud + 2);
 
     // ESC でも戻る
     this.input.keyboard?.once('keydown-ESC', () => this.scene.start(SceneKeys.Title));
@@ -195,7 +195,7 @@ export class StageSelectScene extends Phaser.Scene {
           );
         },
         { width: width - 40, height: 44, fontSize: 18, bg: 0xff7a3d, bgHover: 0xffa672 }
-      );
+      ).setDepth(Depth.Hud + 2);
     } else {
       this.add
         .rectangle(cx, btnY, width - 40, 44, 0x4a4a55, 1)
