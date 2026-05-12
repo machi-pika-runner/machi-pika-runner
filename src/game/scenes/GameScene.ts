@@ -83,6 +83,7 @@ export class GameScene extends Phaser.Scene {
   private sparkleLayer?: Phaser.GameObjects.Container;
   private skyTopRect?: Phaser.GameObjects.Rectangle;
   private hitObstacles = new WeakSet<Obstacle>();
+  private _actionWasDown = false; // タッチ action ボタンのエッジ検出用
 
   // クリーン度で空色を補間（テーマで色帯が変わる）
   private bgDirty = 0x8c9eaf;
@@ -239,6 +240,13 @@ export class GameScene extends Phaser.Scene {
 
     // 開始トースト
     this.hud.toast(`Stage ${this.levelIndex + 1} : ${this.level.name}`, '#ffe066', 1600);
+
+    // BGM 開始（シーン終了時に自動停止）
+    Sound.startBgm();
+    this.events.once('shutdown', () => Sound.stopBgm());
+
+    // クリーン度変化 → BGM レイヤ更新
+    this.cleanliness.on('change', (v: number) => Sound.setBgmCleanliness(v));
   }
 
   // ---------------- 背景 ----------------
@@ -267,6 +275,15 @@ export class GameScene extends Phaser.Scene {
       .setScrollFactor(0.1)
       .setDepth(Depth.BgFar)
       .setAlpha(0.55);
+
+    // 遠景レイヤ 3：樹木シルエット帯（4層目）
+    this.add
+      .tileSprite(0, GAME_HEIGHT - 96, GAME_WIDTH, 80, Tex.TreeLine)
+      .setOrigin(0, 1)
+      .setScrollFactor(0.2)
+      .setDepth(Depth.BgMid)
+      .setAlpha(0.72)
+      .setTint(this.treeLineTint());
 
     // 中景: 雲
     this.cloudLayer = this.add.container(0, 0).setDepth(Depth.BgMid);
@@ -401,6 +418,14 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  private treeLineTint(): number {
+    switch (this.level.theme) {
+      case 'town':  return 0x3a3a48; // 灰みがかったビル風シルエット
+      case 'beach': return 0x2a3820; // やや明るい熱帯樹木
+      default:      return 0x1a2e18; // 公園・川：濃い緑の森
+    }
+  }
+
   // ---------------- update ----------------
 
   update(_time: number, delta: number): void {
@@ -449,15 +474,22 @@ export class GameScene extends Phaser.Scene {
       }
     });
 
-    // ── E キー: 拾う（タップでも長押しオートでも取得できる）──
-    if (this.input2.justPressed('pickup')) {
-      if (this.tryPickup()) this.nextAutoPickupAt = this.elapsed + PLAYER_AUTO_PICKUP_COOLDOWN_MS;
-    } else if (this.input2.isDown('pickup') && this.elapsed >= this.nextAutoPickupAt) {
-      if (this.tryPickup()) this.nextAutoPickupAt = this.elapsed + PLAYER_AUTO_PICKUP_COOLDOWN_MS;
+    // ── 自動近接ピックアップ（マリオのコイン自動取得と同様）──
+    if (this.elapsed >= this.nextAutoPickupAt) {
+      if (this.tryPickup(true)) this.nextAutoPickupAt = this.elapsed + PLAYER_AUTO_PICKUP_COOLDOWN_MS;
     }
+    // E キー：手動拾い（念のため残す）
+    if (this.input2.justPressed('pickup')) this.tryPickup(false);
 
-    // F キー: 分別
-    if (this.input2.justPressed('sort')) this.trySort();
+    // B ボタン（touch）または Z/X/F キー：分別（アクション）
+    // virtual ボタンは isDown でエッジ検出
+    const actionDown = this.input2.isDown('action') || this.input2.isDown('sort');
+    const actionJustFired =
+      this.input2.justPressed('sort') ||
+      this.input2.justPressed('action') ||
+      (actionDown && !this._actionWasDown);
+    this._actionWasDown = actionDown;
+    if (actionJustFired) this.trySort();
 
     // 分別ボックスのプロンプト（一致数を表示）
     for (const b of this.bins) {
@@ -484,18 +516,16 @@ export class GameScene extends Phaser.Scene {
 
   // ---------------- 行動ハンドラ ----------------
 
-  // 拾いに成功したら true。長押しオート取得時のクールダウン管理に使う。
-  private tryPickup(): boolean {
+  // 拾いに成功したら true。autoMode=true は近接自動ピックアップ（短射程）。
+  private tryPickup(autoMode = false): boolean {
     if (this.held.length >= this.capacity) {
-      // タップ操作の時のみトーストを出す（長押しでスパムされないように）
-      if (this.input2.justPressed('pickup')) {
-        this.hud.toast('袋がいっぱい！分別ボックスに入れて！', '#ffd86b');
-      }
+      if (!autoMode) this.hud.toast('袋がいっぱい！分別ボックスに入れて！', '#ffd86b');
       return false;
     }
     const center = this.player.getPickupCenter();
     let nearest: TrashItem | null = null;
-    let nearestD = PLAYER_PICKUP_RANGE;
+    // 自動は近距離のみ。手動はフル射程。
+    let nearestD = autoMode ? 50 : PLAYER_PICKUP_RANGE;
     this.trashGroup.getChildren().forEach((c) => {
       const t = c as TrashItem;
       if (!t.active || t.picked) return;

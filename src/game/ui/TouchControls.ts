@@ -44,16 +44,15 @@ export class TouchControls {
 
   private buildPad(): void {
     const PAD = 24;
-    const BTN = 88;
+    const BTN = 96; // 少し大きく
     const padY = GAME_HEIGHT - BTN / 2 - PAD;
-    // 左下：◀ ▶
+    // 左下：◀ ▶（マリオ十字キー風）
     this.makeButton(PAD + BTN / 2, padY, BTN, '◀', 'left', COLOR.bg);
-    this.makeButton(PAD + BTN / 2 + BTN + 12, padY, BTN, '▶', 'right', COLOR.bg);
-    // 右下：JUMP / 拾う / 分別
+    this.makeButton(PAD + BTN / 2 + BTN + 10, padY, BTN, '▶', 'right', COLOR.bg);
+    // 右下：A=JUMP（大）/ B=分別（アクション）
     const baseX = GAME_WIDTH - PAD - BTN / 2;
-    this.makeButton(baseX, padY, BTN, '↑\nJUMP', 'jump', COLOR.jump);
-    this.makeButton(baseX - BTN - 12, padY, BTN, 'E\n拾う', 'pickup', COLOR.pickup);
-    this.makeButton(baseX - (BTN + 12) * 2, padY, BTN, 'F\n分別', 'sort', COLOR.sort);
+    this.makeButton(baseX, padY, BTN, 'A\nJUMP', 'jump', COLOR.jump);
+    this.makeButton(baseX - BTN - 10, padY, BTN, 'B\n分別', 'action', COLOR.sort);
   }
 
   private makeButton(x: number, y: number, size: number, label: string, name: ButtonName, color: number): void {

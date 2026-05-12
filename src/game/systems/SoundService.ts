@@ -28,6 +28,20 @@ class SoundServiceImpl {
   private muted = false;
   private lastPlayAt: Partial<Record<SoundName, number>> = {};
 
+  // BGM スケジューラ
+  private bgmActive = false;
+  private bgmTimer?: ReturnType<typeof setTimeout>;
+  private bgmStep = 0;
+  private bgmNextTime = 0;
+  private bgmL1?: GainNode; // 常時：ベースライン
+  private bgmL2?: GainNode; // 50%以上：メロディ
+  private bgmL3?: GainNode; // 75%以上：ハーモニー
+
+  // G メジャー・ペンタトニック（G2=98, D3=147, G3=196, A3=220, B3=247, D4=293, E4=329, G4=392）
+  private static BGM_BASS  = [98,  0, 147,  0, 98,  0, 147,  0];
+  private static BGM_LEAD  = [392, 0, 440, 392, 329, 0, 392,  0];
+  private static BGM_PAD   = [196, 247, 0, 293, 196, 0, 247, 293];
+
   // ユーザ操作後に呼ぶ。AudioContext を初期化／レジューム。
   unlock(): void {
     this.ensureContext();
@@ -99,6 +113,88 @@ class SoundServiceImpl {
         this.sweep(720, 900, 0.04, 'sine', 0.08);
         break;
     }
+  }
+
+  // BGM 開始（GameScene から呼ぶ）
+  startBgm(): void {
+    if (this.bgmActive) return;
+    this.ensureContext();
+    if (!this.ctx || !this.master) return;
+
+    this.bgmL1 = this.ctx.createGain(); this.bgmL1.gain.value = 0.30;
+    this.bgmL2 = this.ctx.createGain(); this.bgmL2.gain.value = 0.0001;
+    this.bgmL3 = this.ctx.createGain(); this.bgmL3.gain.value = 0.0001;
+    this.bgmL1.connect(this.master);
+    this.bgmL2.connect(this.master);
+    this.bgmL3.connect(this.master);
+
+    this.bgmActive = true;
+    this.bgmStep = 0;
+    this.bgmNextTime = this.ctx.currentTime + 0.1;
+    this.scheduleBgm();
+  }
+
+  stopBgm(): void {
+    this.bgmActive = false;
+    if (this.bgmTimer !== undefined) { clearTimeout(this.bgmTimer); this.bgmTimer = undefined; }
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    [this.bgmL1, this.bgmL2, this.bgmL3].forEach((g) => {
+      if (!g) return;
+      g.gain.setValueAtTime(g.gain.value, t);
+      g.gain.linearRampToValueAtTime(0.0001, t + 0.5);
+    });
+  }
+
+  // クリーン度に応じてレイヤを徐々にフェードイン/アウト
+  setBgmCleanliness(pct: number): void {
+    if (!this.ctx || !this.bgmL2 || !this.bgmL3) return;
+    const t = this.ctx.currentTime;
+    const ramp = 2.0;
+    const v2 = pct >= 50 ? 0.24 : 0.0001;
+    const v3 = pct >= 75 ? 0.16 : 0.0001;
+    this.bgmL2.gain.cancelScheduledValues(t);
+    this.bgmL3.gain.cancelScheduledValues(t);
+    this.bgmL2.gain.setValueAtTime(this.bgmL2.gain.value, t);
+    this.bgmL3.gain.setValueAtTime(this.bgmL3.gain.value, t);
+    this.bgmL2.gain.linearRampToValueAtTime(v2, t + ramp);
+    this.bgmL3.gain.linearRampToValueAtTime(v3, t + ramp);
+  }
+
+  private scheduleBgm(): void {
+    if (!this.bgmActive || !this.ctx) return;
+    const STEP = 0.20; // 8th note at ~150BPM
+    const AHEAD = 0.22;
+    while (this.bgmNextTime < this.ctx.currentTime + AHEAD) {
+      const i = this.bgmStep % 8;
+      const t = this.bgmNextTime;
+      const b = SoundServiceImpl.BGM_BASS[i];
+      const m = SoundServiceImpl.BGM_LEAD[i];
+      const p = SoundServiceImpl.BGM_PAD[i];
+      if (b && this.bgmL1) this.bgmNote(b, STEP * 0.75, 'sine',     this.bgmL1, t);
+      if (m && this.bgmL2) this.bgmNote(m, STEP * 0.55, 'triangle', this.bgmL2, t);
+      if (p && this.bgmL3) this.bgmNote(p, STEP * 0.85, 'sine',     this.bgmL3, t);
+      this.bgmStep++;
+      this.bgmNextTime += STEP;
+    }
+    this.bgmTimer = setTimeout(() => this.scheduleBgm(), 60);
+  }
+
+  private bgmNote(
+    freq: number, dur: number, type: OscillatorType,
+    dest: GainNode, startTime: number
+  ): void {
+    if (!this.ctx) return;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.0001, startTime);
+    gain.gain.linearRampToValueAtTime(0.85, startTime + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + dur);
+    osc.connect(gain).connect(dest);
+    osc.start(startTime);
+    osc.stop(startTime + dur + 0.01);
   }
 
   private ensureContext(): void {

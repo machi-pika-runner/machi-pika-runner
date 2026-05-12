@@ -586,6 +586,28 @@ const generateThemeTextures = (scene: Phaser.Scene): void => {
   });
 };
 
+const generateTreeLine = (scene: Phaser.Scene): void => {
+  // 240 x 80 のタイル可能な樹木シルエット帯（4 本の木が並ぶ）
+  bake(scene, Tex.TreeLine, 240, 80, (g) => {
+    g.fillStyle(0x1e2f1a, 1);
+    // 木 1：丸い広葉樹（x=24）
+    g.fillCircle(24, 38, 26);
+    g.fillCircle(24, 54, 18);
+    g.fillRect(20, 54, 8, 26);
+    // 木 2：三角形の針葉樹（x=88）
+    g.fillTriangle(88, 2, 60, 80, 116, 80);
+    g.fillTriangle(88, 20, 64, 76, 112, 76);
+    // 木 3：小ぶりな広葉樹（x=158）
+    g.fillCircle(158, 44, 22);
+    g.fillCircle(158, 58, 16);
+    g.fillRect(154, 58, 8, 22);
+    // 木 4：やや高い広葉樹（x=214）
+    g.fillCircle(214, 36, 24);
+    g.fillCircle(214, 52, 18);
+    g.fillRect(210, 52, 8, 28);
+  });
+};
+
 export const generateAllTextures = (scene: Phaser.Scene): void => {
   // 重複生成を避けるため、存在チェックは bake() 側で行う
   generatePixel(scene);
@@ -604,6 +626,7 @@ export const generateAllTextures = (scene: Phaser.Scene): void => {
   generateTrashBadges(scene);
   generateObstacles(scene);
   generateThemeTextures(scene);
+  generateTreeLine(scene);
 
   // tmpKey を確実にクリーンアップ
   if (scene.textures.exists(tmpKey)) scene.textures.remove(tmpKey);

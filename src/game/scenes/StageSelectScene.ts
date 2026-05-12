@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { Depth, GAME_HEIGHT, GAME_WIDTH, SceneKeys, THEME_COLORS } from '../constants';
+import { Depth, GAME_HEIGHT, GAME_WIDTH, SceneKeys, THEME_COLORS, type StageTheme } from '../constants';
 import { LEVELS, type LevelDef } from '../data/levels';
 import { Button } from '../ui/Button';
 import { hexString } from '../utils/math';
@@ -70,6 +70,69 @@ export class StageSelectScene extends Phaser.Scene {
     this.input.keyboard?.once('keydown-ESC', () => this.scene.start(SceneKeys.Title));
   }
 
+  // 絵文字の代わりに Phaser.Graphics でテーマアイコンを描く（OS/ブラウザ差をなくす）
+  private drawThemeIcon(
+    g: Phaser.GameObjects.Graphics,
+    theme: StageTheme,
+    cx: number,
+    cy: number
+  ): void {
+    switch (theme) {
+      case 'park': {
+        g.fillStyle(0x6a3a14, 1);
+        g.fillRect(cx - 6, cy + 12, 12, 30);
+        g.fillStyle(0x4caf50, 1);
+        g.fillCircle(cx, cy - 10, 32);
+        g.fillStyle(0x66bb6a, 0.85);
+        g.fillCircle(cx - 16, cy + 4, 20);
+        g.fillCircle(cx + 16, cy + 4, 20);
+        g.fillStyle(0x9ed59f, 0.7);
+        g.fillCircle(cx - 6, cy - 18, 12);
+        break;
+      }
+      case 'river': {
+        g.fillStyle(0x4aa8e0, 1);
+        g.fillEllipse(cx, cy + 6, 80, 26);
+        g.fillStyle(0x68bce8, 1);
+        g.fillEllipse(cx - 6, cy - 12, 64, 20);
+        g.fillStyle(0xffffff, 0.65);
+        g.fillEllipse(cx - 22, cy + 2, 24, 7);
+        g.fillEllipse(cx + 16, cy + 10, 20, 6);
+        g.fillEllipse(cx - 8, cy - 16, 18, 5);
+        break;
+      }
+      case 'town': {
+        g.fillStyle(0x7a7e8c, 1);
+        g.fillRect(cx - 32, cy - 26, 30, 58);
+        g.fillStyle(0x9a9eb2, 1);
+        g.fillRect(cx + 2, cy - 8, 26, 40);
+        g.fillStyle(0x5a5e6c, 1);
+        g.fillRect(cx - 32, cy - 30, 30, 5);
+        g.fillRect(cx + 2, cy - 12, 26, 5);
+        g.fillStyle(0xffd86b, 0.9);
+        for (let r = 0; r < 3; r++) {
+          g.fillRect(cx - 28, cy - 18 + r * 16, 8, 9);
+          g.fillRect(cx - 16, cy - 18 + r * 16, 8, 9);
+        }
+        g.fillRect(cx + 6, cy, 8, 8);
+        g.fillRect(cx + 18, cy + 10, 8, 8);
+        break;
+      }
+      case 'beach': {
+        g.fillStyle(0xffd86b, 1);
+        g.fillCircle(cx + 20, cy - 18, 18);
+        g.fillStyle(0x4aa8e0, 1);
+        g.fillEllipse(cx - 4, cy + 10, 76, 24);
+        g.fillStyle(0xffffff, 0.65);
+        g.fillEllipse(cx - 18, cy + 6, 22, 7);
+        g.fillEllipse(cx + 10, cy + 14, 18, 5);
+        g.fillStyle(0xf4e1a4, 1);
+        g.fillEllipse(cx - 2, cy + 22, 78, 16);
+        break;
+      }
+    }
+  }
+
   private buildCard(
     cx: number,
     cy: number,
@@ -95,20 +158,10 @@ export class StageSelectScene extends Phaser.Scene {
       .rectangle(cx, cy - cardHeight / 2 + previewH / 2 + 4, width - 14, previewH, themeC.bgClean, 1)
       .setDepth(Depth.Hud);
 
-    // テーマアイコン（絵文字代用）
-    const themeIcon: Record<string, string> = {
-      park: '🌳',
-      river: '🌊',
-      town: '🏬',
-      beach: '🏖️'
-    };
-    this.add
-      .text(cx, cy - cardHeight / 2 + previewH / 2 + 4, themeIcon[lv.theme] ?? '🗺️', {
-        fontFamily: 'sans-serif',
-        fontSize: '64px'
-      })
-      .setOrigin(0.5)
-      .setDepth(Depth.Hud + 1);
+    // テーマアイコン（Canvas Graphics 描画。絵文字は環境依存するため使わない）
+    const iconGfx = this.add.graphics();
+    iconGfx.setDepth(Depth.Hud + 1);
+    this.drawThemeIcon(iconGfx, lv.theme, cx, cy - cardHeight / 2 + previewH / 2 + 4);
 
     // ステージ番号
     this.add

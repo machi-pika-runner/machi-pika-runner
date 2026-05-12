@@ -3,7 +3,7 @@
 
 import Phaser from 'phaser';
 
-export type ButtonName = 'left' | 'right' | 'jump' | 'duck' | 'pickup' | 'sort' | 'pause' | 'restart';
+export type ButtonName = 'left' | 'right' | 'jump' | 'duck' | 'pickup' | 'sort' | 'action' | 'pause' | 'restart';
 
 export class InputManager {
   private scene: Phaser.Scene;
@@ -33,6 +33,8 @@ export class InputManager {
       SPACE: kb.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE),
       E: kb.addKey(Phaser.Input.Keyboard.KeyCodes.E),
       F: kb.addKey(Phaser.Input.Keyboard.KeyCodes.F),
+      Z: kb.addKey(Phaser.Input.Keyboard.KeyCodes.Z),
+      X: kb.addKey(Phaser.Input.Keyboard.KeyCodes.X),
       P: kb.addKey(Phaser.Input.Keyboard.KeyCodes.P),
       R: kb.addKey(Phaser.Input.Keyboard.KeyCodes.R),
       ENTER: kb.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER)
@@ -55,6 +57,8 @@ export class InputManager {
         return this.keys.E?.isDown;
       case 'sort':
         return this.keys.F?.isDown;
+      case 'action':
+        return this.keys.Z?.isDown || this.keys.X?.isDown;
       case 'pause':
         return this.keys.P?.isDown;
       case 'restart':
@@ -75,6 +79,8 @@ export class InputManager {
         return j(this.keys.E);
       case 'sort':
         return j(this.keys.F);
+      case 'action':
+        return j(this.keys.Z) || j(this.keys.X);
       case 'pause':
         return j(this.keys.P);
       case 'restart':

@@ -110,6 +110,7 @@ export const Tex = {
   PalmTree: 'tex_palm',
   Building: 'tex_building',
   WaveStrip: 'tex_wave',
+  TreeLine: 'tex_treeline',
   Pixel: 'tex_pixel'
 } as const;
 

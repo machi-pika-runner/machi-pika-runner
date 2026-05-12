@@ -37,6 +37,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private _isAscending = false;
   private _wasOnGround = true;
 
+  // アニメーション tween（idle 呼吸 / run ステップ）
+  private _animTween?: Phaser.Tweens.Tween;
+
   // 袋満杯インジケータ（頭上「FULL!」）
   private fullIndicator?: Phaser.GameObjects.Text;
   private _bagFull = false;
@@ -159,6 +162,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   destroy(fromScene?: boolean): void {
+    this._animTween?.stop();
     this.fullIndicator?.destroy();
     this.invincibleRing?.destroy();
     super.destroy(fromScene);
@@ -307,5 +311,31 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       hurt: Tex.PlayerHurt
     };
     this.setTexture(map[state]);
+
+    // 前の looping tween を止めてから状態に応じた tween を開始
+    this._animTween?.stop();
+    this._animTween = undefined;
+
+    if (state === 'idle') {
+      this.setScale(1, 1);
+      // 呼吸のような微細な上下スケール
+      this._animTween = this.scene.tweens.add({
+        targets: this,
+        scaleY: { from: 1.0, to: 0.965 },
+        scaleX: { from: 1.0, to: 1.025 },
+        yoyo: true, repeat: -1,
+        duration: 680, ease: 'Sine.easeInOut'
+      });
+    } else if (state === 'run') {
+      this.setScale(1, 1);
+      // 走り歩幅のスクワッシュ＆ストレッチ
+      this._animTween = this.scene.tweens.add({
+        targets: this,
+        scaleY: { from: 1.06, to: 0.94 },
+        scaleX: { from: 0.95, to: 1.06 },
+        yoyo: true, repeat: -1,
+        duration: 140, ease: 'Sine.easeInOut'
+      });
+    }
   }
 }
