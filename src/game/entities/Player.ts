@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { InputManager } from '../systems/InputManager';
 import { Sound } from '../systems/SoundService';
+import { Debug } from '../utils/debugDiagnostics';
 import {
   Depth,
   PLAYER_SPEED,
@@ -166,6 +167,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   // ステージ更新ループから呼ぶ
   tick(): void {
+    Debug.incTick();
     if (!this.inputMgr) return;
     const body = this.body as Phaser.Physics.Arcade.Body | null;
     if (!body) return;
@@ -194,17 +196,51 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     let speed = this._crouching ? PLAYER_SPEED_DUCK : PLAYER_SPEED;
     if (this.scene.time.now < this._slipUntil) speed *= this._slipFactor;
 
+    const inputLeft = this.inputMgr.isDown('left');
+    const inputRight = this.inputMgr.isDown('right');
+    const inputJump = this.inputMgr.isDown('jump');
+    const inputDuck = this.inputMgr.isDown('duck');
+
     let vx = 0;
-    if (this.inputMgr.isDown('left')) {
+    if (inputLeft) {
       vx -= speed;
       this._facing = -1;
     }
-    if (this.inputMgr.isDown('right')) {
+    if (inputRight) {
       vx += speed;
       this._facing = 1;
     }
+    const beforeVelX = body.velocity.x;
     body.setVelocityX(vx);
+    const afterVelX = body.velocity.x;
     this.setFlipX(this._facing === -1);
+
+    // 診断記録（debug=1 の時だけ実体が動く。No-op オーバーヘッドは無視できる）
+    Debug.recordPlayerTick({
+      inputLeft, inputRight, inputJump, inputDuck,
+      speed,
+      crouching: this._crouching,
+      slipUntil: this._slipUntil,
+      slipFactor: this._slipFactor,
+      onGround,
+      calcVx: vx,
+      beforeVelX,
+      afterVelX,
+      pState: this._state,
+      px: this.x, py: this.y,
+      pScaleX: this.scaleX, pScaleY: this.scaleY,
+      bEnable: body.enable,
+      bMoves: body.moves,
+      bImmovable: body.immovable,
+      bAllowGravity: body.allowGravity,
+      bEmbedded: body.embedded,
+      bBlocked: { up: body.blocked.up, down: body.blocked.down, left: body.blocked.left, right: body.blocked.right },
+      bTouching: { up: body.touching.up, down: body.touching.down, left: body.touching.left, right: body.touching.right },
+      bVelX: body.velocity.x,
+      bVelY: body.velocity.y,
+      bAccelX: body.acceleration.x,
+      bAccelY: body.acceleration.y
+    });
 
     // ── ジャンプ：コヨーテタイム + ジャンプバッファ + 可変高 ──
     const now = this.scene.time.now;
@@ -219,13 +255,15 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this._lastGroundedAt = -Infinity;
       this._isAscending = true;
       Sound.play('jump');
-      this.scene.tweens.add({
-        targets: this,
-        scaleY: { from: 1.08, to: 1 },
-        scaleX: { from: 0.94, to: 1 },
-        duration: 140,
-        ease: 'Quad.easeOut'
-      });
+      if (!Debug.noScaleTween) {
+        this.scene.tweens.add({
+          targets: this,
+          scaleY: { from: 1.08, to: 1 },
+          scaleX: { from: 0.94, to: 1 },
+          duration: 140,
+          ease: 'Quad.easeOut'
+        });
+      }
     }
     // 上昇中に Space を離したら上昇を切る
     if (this._isAscending) {
@@ -274,13 +312,15 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   // 着地演出：足元ダスト + 軽い縦スクワッシュ + SE
   private onLanding(): void {
     Sound.play('land');
-    this.scene.tweens.add({
-      targets: this,
-      scaleY: { from: 0.86, to: 1 },
-      scaleX: { from: 1.1, to: 1 },
-      duration: 130,
-      ease: 'Quad.easeOut'
-    });
+    if (!Debug.noScaleTween) {
+      this.scene.tweens.add({
+        targets: this,
+        scaleY: { from: 0.86, to: 1 },
+        scaleX: { from: 1.1, to: 1 },
+        duration: 130,
+        ease: 'Quad.easeOut'
+      });
+    }
     this.spawnLandingDust();
   }
 
@@ -325,5 +365,34 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       };
       this.setTexture(tex[state]);
     }
+  }
+
+  // 診断用：プレイヤーと物理ボディの全状態を返す
+  debugSnapshot(): unknown {
+    const body = this.body as Phaser.Physics.Arcade.Body | null;
+    return {
+      state: this._state,
+      life: this._life,
+      invincible: this.isInvincible,
+      crouching: this._crouching,
+      facing: this._facing,
+      x: this.x, y: this.y,
+      active: this.active, visible: this.visible, alpha: this.alpha,
+      scaleX: this.scaleX, scaleY: this.scaleY,
+      anim: this.anims.currentAnim?.key ?? null,
+      body: body ? {
+        enable: body.enable,
+        moves: body.moves,
+        immovable: body.immovable,
+        embedded: body.embedded,
+        allowGravity: body.allowGravity,
+        blocked: { up: body.blocked.up, down: body.blocked.down, left: body.blocked.left, right: body.blocked.right },
+        touching: { up: body.touching.up, down: body.touching.down, left: body.touching.left, right: body.touching.right },
+        velocity: { x: body.velocity.x, y: body.velocity.y },
+        acceleration: { x: body.acceleration.x, y: body.acceleration.y },
+        width: body.width, height: body.height,
+        offset: { x: body.offset.x, y: body.offset.y }
+      } : null
+    };
   }
 }

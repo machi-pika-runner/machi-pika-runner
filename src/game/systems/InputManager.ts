@@ -95,6 +95,40 @@ export class InputManager {
     this.virtual[b] = down;
   }
 
+  // 全入力を解除（blur / visibilitychange / scene resume などで使う）。
+  // keyboard.resetKeys は Phaser のキー状態を全クリアする。
+  resetAll(): void {
+    this.virtual = {};
+    const kb = this.scene.input.keyboard;
+    if (!kb) return;
+    if (typeof kb.resetKeys === 'function') {
+      kb.resetKeys();
+    } else {
+      // フォールバック：各キーを isDown=false に
+      Object.values(this.keys).forEach((k) => {
+        if (k && typeof k.reset === 'function') k.reset();
+      });
+    }
+  }
+
+  // 診断用：全ボタンの現在状態を返す
+  debugSnapshot(): {
+    logical: Record<ButtonName, boolean>;
+    keyboard: Record<string, boolean>;
+    virtual: Record<string, boolean>;
+  } {
+    const names: ButtonName[] = ['left', 'right', 'jump', 'duck', 'pickup', 'sort', 'action', 'pause', 'restart'];
+    const logical = {} as Record<ButtonName, boolean>;
+    names.forEach((n) => { logical[n] = this.isDown(n); });
+    const keyboard: Record<string, boolean> = {};
+    Object.entries(this.keys).forEach(([k, key]) => { keyboard[k] = !!key?.isDown; });
+    return {
+      logical,
+      keyboard,
+      virtual: { ...this.virtual } as Record<string, boolean>
+    };
+  }
+
   destroy(): void {
     this.virtual = {};
   }

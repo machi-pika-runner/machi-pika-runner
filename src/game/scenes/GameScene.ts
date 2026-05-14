@@ -46,6 +46,7 @@ import { ScoreManager } from '../systems/ScoreManager';
 import { HUD } from '../ui/HUD';
 import { TouchControls } from '../ui/TouchControls';
 import { clamp } from '../utils/math';
+import { Debug } from '../utils/debugDiagnostics';
 
 export class GameScene extends Phaser.Scene {
   private input2!: InputManager;
@@ -134,6 +135,30 @@ export class GameScene extends Phaser.Scene {
     // 防御：シーンが外部要因で pause された場合は即 resume（タブ復帰・モーダル復帰で詰まらない）
     this.events.on(Phaser.Scenes.Events.PAUSE, () => {
       if (!this.paused) this.scene.resume();
+    });
+
+    // blur / visibilitychange / resume 時に入力を全解除（スタックキー対策）
+    const onBlur = () => {
+      this.input2?.resetAll();
+      Debug.pushEvent('window.blur → input reset');
+    };
+    const onVisibility = () => {
+      if (document.hidden) {
+        this.input2?.resetAll();
+        Debug.pushEvent('document.hidden → input reset');
+      }
+    };
+    const onResume = () => {
+      this.input2?.resetAll();
+      Debug.pushEvent('scene.resume → input reset');
+    };
+    window.addEventListener('blur', onBlur);
+    document.addEventListener('visibilitychange', onVisibility);
+    this.events.on(Phaser.Scenes.Events.RESUME, onResume);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      window.removeEventListener('blur', onBlur);
+      document.removeEventListener('visibilitychange', onVisibility);
+      this.events.off(Phaser.Scenes.Events.RESUME, onResume);
     });
 
     // 背景・装飾
@@ -442,7 +467,15 @@ export class GameScene extends Phaser.Scene {
   // ---------------- update ----------------
 
   update(_time: number, delta: number): void {
-    if (this.isOver) return;
+    // 診断：isOver / paused の early-return でも snapshot を取りたいので、
+    // 終了系の return より前にフラグを保持し、最後に記録する。
+    const wasOver = this.isOver;
+    const wasPaused = this.paused;
+
+    if (this.isOver) {
+      this.recordDebugFrame(_time, delta, wasOver, wasPaused);
+      return;
+    }
     this.elapsed += delta;
 
     // ポーズトグル
@@ -450,7 +483,10 @@ export class GameScene extends Phaser.Scene {
     // リスタート
     if (this.input2.justPressed('restart')) this.scene.restart();
 
-    if (this.paused) return;
+    if (this.paused) {
+      this.recordDebugFrame(_time, delta, wasOver, wasPaused);
+      return;
+    }
 
     // プレイヤー
     this.player.tick();
@@ -461,6 +497,7 @@ export class GameScene extends Phaser.Scene {
     // ゴール判定（通過時にゴール演出を出してから endGame）
     if (this.player.x >= this.goalX) {
       this.triggerGoalCelebration();
+      this.recordDebugFrame(_time, delta, wasOver, wasPaused);
       return;
     }
 
@@ -525,6 +562,74 @@ export class GameScene extends Phaser.Scene {
         if (img.x < this.cameras.main.scrollX - 200) img.x += GAME_WIDTH + 400;
       });
     }
+
+    // 診断記録（debug=1 の時のみ実行）
+    this.recordDebugFrame(_time, delta, wasOver, wasPaused);
+  }
+
+  // 診断用：scene 全体の状態 snapshot（debug 時のみ実体が動く）
+  private recordDebugFrame(now: number, delta: number, wasOver: boolean, wasPaused: boolean): void {
+    if (!Debug.enabled) return;
+    const body = this.player?.body as Phaser.Physics.Arcade.Body | undefined;
+    Debug.recordFrame({
+      now,
+      delta,
+      elapsed: this.elapsed,
+      levelIndex: this.levelIndex,
+      scenePaused: this.scene.isPaused(),
+      sceneActive: this.scene.isActive(),
+      sceneSleeping: this.scene.isSleeping(),
+      physicsPaused: this.physics.world.isPaused,
+      paused: wasPaused || this.paused,
+      isOver: wasOver || this.isOver,
+      resultSent: this.resultSent,
+      px: this.player?.x ?? 0, py: this.player?.y ?? 0,
+      pActive: this.player?.active ?? false,
+      pVisible: this.player?.visible ?? false,
+      pAlpha: this.player?.alpha ?? 0,
+      pScaleX: this.player?.scaleX ?? 1, pScaleY: this.player?.scaleY ?? 1,
+      pState: '',
+      bEnable: !!body?.enable, bMoves: !!body?.moves, bImmovable: !!body?.immovable,
+      bAllowGravity: !!body?.allowGravity, bEmbedded: !!body?.embedded,
+      bBlocked: body
+        ? { up: body.blocked.up, down: body.blocked.down, left: body.blocked.left, right: body.blocked.right }
+        : { up: false, down: false, left: false, right: false },
+      bTouching: body
+        ? { up: body.touching.up, down: body.touching.down, left: body.touching.left, right: body.touching.right }
+        : { up: false, down: false, left: false, right: false },
+      bVelX: body?.velocity.x ?? 0, bVelY: body?.velocity.y ?? 0,
+      bAccelX: body?.acceleration.x ?? 0, bAccelY: body?.acceleration.y ?? 0,
+      inputLeft:    !!this.input2?.isDown('left'),
+      inputRight:   !!this.input2?.isDown('right'),
+      inputJump:    !!this.input2?.isDown('jump'),
+      inputDuck:    !!this.input2?.isDown('duck'),
+      inputPickup:  !!this.input2?.isDown('pickup'),
+      inputSort:    !!this.input2?.isDown('sort'),
+      inputAction:  !!this.input2?.isDown('action'),
+      inputPause:   !!this.input2?.isDown('pause'),
+      inputRestart: !!this.input2?.isDown('restart'),
+      held: this.held.length,
+      capacity: this.capacity
+    });
+  }
+
+  // 診断用：scene 状態スナップショット（window.__MACHI_DEBUG__.dump() から呼ばれる）
+  debugSnapshot(): unknown {
+    return {
+      levelIndex: this.levelIndex,
+      paused: this.paused,
+      isOver: this.isOver,
+      resultSent: this.resultSent,
+      elapsed: this.elapsed,
+      timeLeft: this.timeLeft,
+      goalX: this.goalX,
+      held: this.held.length, capacity: this.capacity,
+      scenePaused: this.scene.isPaused(),
+      sceneActive: this.scene.isActive(),
+      sceneSleeping: this.scene.isSleeping(),
+      physicsPaused: this.physics.world.isPaused,
+      noScaleTween: Debug.noScaleTween
+    };
   }
 
   // ---------------- 行動ハンドラ ----------------
