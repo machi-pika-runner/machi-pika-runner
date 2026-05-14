@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_HEIGHT, GAME_WIDTH, SceneKeys } from '../constants';
+import { GAME_HEIGHT, GAME_WIDTH, SceneKeys, Tex } from '../constants';
 import { generateAllTextures } from '../utils/assetFactory';
 import { Sound } from '../systems/SoundService';
 import { loadMuted } from '../utils/storage';
@@ -44,6 +44,8 @@ export class BootScene extends Phaser.Scene {
 
     // 仮素材を一気に焼き込む
     generateAllTextures(this);
+    // プレイヤーのフレーム切替アニメ（idle/run は 2 フレーム、その他は単フレーム）
+    this.registerPlayerAnims();
     // 保存済みのミュート状態を復元
     Sound.setMuted(loadMuted());
 
@@ -55,5 +57,24 @@ export class BootScene extends Phaser.Scene {
         this.time.delayedCall(360, () => this.scene.start(SceneKeys.Title));
       }
     });
+  }
+
+  // プレイヤーのアニメーションをグローバル登録（GameScene 起動前に呼ばれる）。
+  // スプライト切替方式：scale を動かさないので物理ボディ・カスタム tween と無干渉。
+  private registerPlayerAnims(): void {
+    const reg = (key: string, frames: string[], rate: number, loop: boolean) => {
+      if (this.anims.exists(key)) return;
+      this.anims.create({
+        key,
+        frames: frames.map((k) => ({ key: k })),
+        frameRate: rate,
+        repeat: loop ? -1 : 0
+      });
+    };
+    reg('player-idle', [Tex.PlayerIdle, Tex.PlayerIdle2], 2, true);
+    reg('player-run',  [Tex.PlayerRun,  Tex.PlayerRun2 ], 9, true);
+    reg('player-jump', [Tex.PlayerJump], 1, false);
+    reg('player-duck', [Tex.PlayerDuck], 1, false);
+    reg('player-hurt', [Tex.PlayerHurt], 1, false);
   }
 }

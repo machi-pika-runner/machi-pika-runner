@@ -109,6 +109,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   create(): void {
+    // 状態の完全リセット（前回 run の残骸がフリーズを起こさないよう全フィールドを初期化）
     this.isOver = false;
     this.resultSent = false;
     this.paused = false;
@@ -118,10 +119,22 @@ export class GameScene extends Phaser.Scene {
     this.elapsed = 0;
     this.bins = [];
     this.obstacles = [];
+    this.goalX = 0;
+    this.nextAutoPickupAt = 0;
+    this._actionWasDown = false;
+    this.hitObstacles = new WeakSet<Obstacle>();
+
+    // 物理ワールドの一時停止解除（前回ポーズ状態が残らないように）
+    this.physics.world.isPaused = false;
 
     this.physics.world.setBounds(0, 0, this.level.width, GAME_HEIGHT);
     this.cameras.main.setBounds(0, 0, this.level.width, GAME_HEIGHT);
     this.cameras.main.setBackgroundColor('#a8e0ff');
+
+    // 防御：シーンが外部要因で pause された場合は即 resume（タブ復帰・モーダル復帰で詰まらない）
+    this.events.on(Phaser.Scenes.Events.PAUSE, () => {
+      if (!this.paused) this.scene.resume();
+    });
 
     // 背景・装飾
     this.buildBackground();

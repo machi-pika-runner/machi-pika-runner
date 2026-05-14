@@ -163,21 +163,29 @@ class SoundServiceImpl {
 
   private scheduleBgm(): void {
     if (!this.bgmActive || !this.ctx) return;
-    const STEP = 0.20; // 8th note at ~150BPM
-    const AHEAD = 0.22;
-    while (this.bgmNextTime < this.ctx.currentTime + AHEAD) {
-      const i = this.bgmStep % 8;
-      const t = this.bgmNextTime;
-      const b = SoundServiceImpl.BGM_BASS[i];
-      const m = SoundServiceImpl.BGM_LEAD[i];
-      const p = SoundServiceImpl.BGM_PAD[i];
-      if (b && this.bgmL1) this.bgmNote(b, STEP * 0.75, 'sine',     this.bgmL1, t);
-      if (m && this.bgmL2) this.bgmNote(m, STEP * 0.55, 'triangle', this.bgmL2, t);
-      if (p && this.bgmL3) this.bgmNote(p, STEP * 0.85, 'sine',     this.bgmL3, t);
-      this.bgmStep++;
-      this.bgmNextTime += STEP;
+    try {
+      const STEP = 0.20; // 8th note at ~150BPM
+      const AHEAD = 0.22;
+      // 暴走防止：1 回のスケジュールで最大 16 ステップに制限
+      let budget = 16;
+      while (this.bgmNextTime < this.ctx.currentTime + AHEAD && budget-- > 0) {
+        const i = this.bgmStep % 8;
+        const t = this.bgmNextTime;
+        const b = SoundServiceImpl.BGM_BASS[i];
+        const m = SoundServiceImpl.BGM_LEAD[i];
+        const p = SoundServiceImpl.BGM_PAD[i];
+        if (b && this.bgmL1) this.bgmNote(b, STEP * 0.75, 'sine',     this.bgmL1, t);
+        if (m && this.bgmL2) this.bgmNote(m, STEP * 0.55, 'triangle', this.bgmL2, t);
+        if (p && this.bgmL3) this.bgmNote(p, STEP * 0.85, 'sine',     this.bgmL3, t);
+        this.bgmStep++;
+        this.bgmNextTime += STEP;
+      }
+    } catch {
+      // ノードがクローズされた等で例外が出ても BGM だけ停止し、ゲームには影響させない
+      this.bgmActive = false;
+      return;
     }
-    this.bgmTimer = setTimeout(() => this.scheduleBgm(), 60);
+    if (this.bgmActive) this.bgmTimer = setTimeout(() => this.scheduleBgm(), 60);
   }
 
   private bgmNote(
@@ -185,16 +193,20 @@ class SoundServiceImpl {
     dest: GainNode, startTime: number
   ): void {
     if (!this.ctx) return;
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    osc.type = type;
-    osc.frequency.value = freq;
-    gain.gain.setValueAtTime(0.0001, startTime);
-    gain.gain.linearRampToValueAtTime(0.85, startTime + 0.015);
-    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + dur);
-    osc.connect(gain).connect(dest);
-    osc.start(startTime);
-    osc.stop(startTime + dur + 0.01);
+    try {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = type;
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.0001, startTime);
+      gain.gain.linearRampToValueAtTime(0.85, startTime + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, startTime + dur);
+      osc.connect(gain).connect(dest);
+      osc.start(startTime);
+      osc.stop(startTime + dur + 0.01);
+    } catch {
+      /* 単音失敗は無視 */
+    }
   }
 
   private ensureContext(): void {

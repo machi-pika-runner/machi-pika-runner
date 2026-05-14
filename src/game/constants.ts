@@ -80,7 +80,9 @@ export const SceneKeys = {
 // テクスチャキー（assetFactory で生成）
 export const Tex = {
   PlayerIdle: 'tex_player_idle',
+  PlayerIdle2: 'tex_player_idle2',
   PlayerRun: 'tex_player_run',
+  PlayerRun2: 'tex_player_run2',
   PlayerJump: 'tex_player_jump',
   PlayerDuck: 'tex_player_duck',
   PlayerHurt: 'tex_player_hurt',

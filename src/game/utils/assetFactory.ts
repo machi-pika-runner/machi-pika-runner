@@ -39,7 +39,7 @@ const generatePlayer = (scene: Phaser.Scene): void => {
   const H = 84;
 
   // 共通: ランナー素体（頭・体・腕・脚）
-  const drawBase = (g: Phaser.GameObjects.Graphics, frame: 'idle' | 'run' | 'jump' | 'duck' | 'hurt') => {
+  const drawBase = (g: Phaser.GameObjects.Graphics, frame: 'idle' | 'idle2' | 'run' | 'run2' | 'jump' | 'duck' | 'hurt') => {
     const skin = 0xfdd9b5;
     const shirt = 0xff7a3d; // 明るいオレンジ
     const shirtAccent = 0xffd86b;
@@ -106,6 +106,17 @@ const generatePlayer = (scene: Phaser.Scene): void => {
       g.fillStyle(shoe, 1);
       g.fillRoundedRect(14, 78, 16, 6, 2);
       g.fillRoundedRect(30, 78, 16, 6, 2);
+    } else if (frame === 'idle2') {
+      // idle 第二フレーム：腕がやや内側、瞬きで呼吸感
+      g.fillStyle(skin, 1);
+      g.fillRoundedRect(10, 40, 8, 20, 3);
+      g.fillRoundedRect(42, 40, 8, 20, 3);
+      g.fillStyle(pants, 1);
+      g.fillRoundedRect(16, 60, 12, 20, 3);
+      g.fillRoundedRect(32, 60, 12, 20, 3);
+      g.fillStyle(shoe, 1);
+      g.fillRoundedRect(14, 78, 16, 6, 2);
+      g.fillRoundedRect(30, 78, 16, 6, 2);
     } else if (frame === 'run') {
       // 腕（前後にスイング）
       g.fillStyle(skin, 1);
@@ -118,6 +129,17 @@ const generatePlayer = (scene: Phaser.Scene): void => {
       g.fillStyle(shoe, 1);
       g.fillRoundedRect(4, 78, 18, 6, 2);
       g.fillRoundedRect(34, 78, 20, 6, 2);
+    } else if (frame === 'run2') {
+      // run 第二フレーム：腕脚を逆スイング（足踏み感）
+      g.fillStyle(skin, 1);
+      g.fillRoundedRect(48, 36, 9, 22, 3);
+      g.fillRoundedRect(2, 38, 9, 22, 3);
+      g.fillStyle(pants, 1);
+      g.fillRoundedRect(34, 58, 14, 22, 3);
+      g.fillRoundedRect(8, 58, 14, 22, 3);
+      g.fillStyle(shoe, 1);
+      g.fillRoundedRect(34, 78, 18, 6, 2);
+      g.fillRoundedRect(4, 78, 20, 6, 2);
     } else if (frame === 'jump') {
       // ジャンプ（腕上、脚すぼめ）
       g.fillStyle(skin, 1);
@@ -143,11 +165,13 @@ const generatePlayer = (scene: Phaser.Scene): void => {
     }
   };
 
-  bake(scene, Tex.PlayerIdle, W, H, (g) => drawBase(g, 'idle'));
-  bake(scene, Tex.PlayerRun, W, H, (g) => drawBase(g, 'run'));
-  bake(scene, Tex.PlayerJump, W, H, (g) => drawBase(g, 'jump'));
-  bake(scene, Tex.PlayerDuck, W, H, (g) => drawBase(g, 'duck'));
-  bake(scene, Tex.PlayerHurt, W, H, (g) => drawBase(g, 'hurt'));
+  bake(scene, Tex.PlayerIdle,  W, H, (g) => drawBase(g, 'idle'));
+  bake(scene, Tex.PlayerIdle2, W, H, (g) => drawBase(g, 'idle2'));
+  bake(scene, Tex.PlayerRun,   W, H, (g) => drawBase(g, 'run'));
+  bake(scene, Tex.PlayerRun2,  W, H, (g) => drawBase(g, 'run2'));
+  bake(scene, Tex.PlayerJump,  W, H, (g) => drawBase(g, 'jump'));
+  bake(scene, Tex.PlayerDuck,  W, H, (g) => drawBase(g, 'duck'));
+  bake(scene, Tex.PlayerHurt,  W, H, (g) => drawBase(g, 'hurt'));
 };
 
 const generateGround = (scene: Phaser.Scene): void => {
