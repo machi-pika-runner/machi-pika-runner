@@ -132,6 +132,9 @@ export const THEME_COLORS: Record<
 // 評価ランク
 export type Rank = 'S' | 'A' | 'B' | 'C';
 
+// ステージ終了理由（リザルト画面のヘッダー表示分け）
+export type EndReason = 'cleared' | 'time-up' | 'life-zero';
+
 export interface RunResult {
   score: number;
   cleanliness: number;
@@ -144,6 +147,9 @@ export interface RunResult {
   maxCombo: number;
   levelIndex: number;
   levelName: string;
+  endReason: EndReason;
+  hits: number;
+  targetCleanliness: number;
 }
 
 export const RANK_COMMENTS: Record<Rank, string> = {
@@ -151,6 +157,14 @@ export const RANK_COMMENTS: Record<Rank, string> = {
   A: 'かなりきれいになりました！あと少しで完璧です',
   B: 'いいスタートです。次は分別も意識してみましょう',
   C: 'まずは一歩。街をきれいにする旅はここからです'
+};
+
+// ランクの短い意味（HOW TO PLAY と ResultPanel で使う）
+export const RANK_MEANINGS: Record<Rank, string> = {
+  S: 'かなりきれいにできた',
+  A: '十分クリア',
+  B: 'もう少し拾える',
+  C: '分別と回避を見直そう'
 };
 
 export const Depth = {

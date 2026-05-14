@@ -34,6 +34,7 @@ export interface LevelDef {
   timeLimit: number; // 秒
   targetCleanliness: number; // A ランク到達ライン（%）
   wind?: number; // プラスチック等が左右に揺れる強さ（0 = 無風）
+  tips?: string[]; // ステージ選択カード/ミッションカード用の攻略ポイント（1〜3行）
   trashes: TrashSpawn[];
   obstacles: ObstacleSpawn[];
   bins: BinSpawn[];
@@ -53,6 +54,7 @@ export const LEVEL_1: LevelDef = {
   spawnX: 120,
   timeLimit: 120,
   targetCleanliness: 60,
+  tips: ['基本ルールを覚えるステージ', 'ゴミ拾いと分別の練習に最適'],
 
   trashes: [
     onGround(360, 'paper'),
@@ -128,6 +130,7 @@ export const LEVEL_2: LevelDef = {
   timeLimit: 140,
   targetCleanliness: 65,
   wind: 10,
+  tips: ['水たまりは滑る。ジャンプで回避', 'ビニール袋が風で揺れる'],
 
   trashes: [
     onGround(360, 'bottle'),
@@ -203,6 +206,7 @@ export const LEVEL_3: LevelDef = {
   spawnX: 120,
   timeLimit: 130,
   targetCleanliness: 70,
+  tips: ['自転車や立看板を避けろ', '袋がいっぱいになる前に早めに分別'],
 
   trashes: [
     // 各種ゴミが混在。プレイヤーは持ち越し前提で動く
@@ -288,6 +292,7 @@ export const LEVEL_4: LevelDef = {
   timeLimit: 150,
   targetCleanliness: 75,
   wind: 18,
+  tips: ['風で動くゴミを追いかけて確実に拾う', '取り逃がしを減らしてクリーン度を死守'],
 
   trashes: [
     // 砂浜にプラスチック大量

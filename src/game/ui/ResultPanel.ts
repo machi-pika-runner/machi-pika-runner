@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { Depth, GAME_HEIGHT, GAME_WIDTH, RANK_COMMENTS, type RunResult } from '../constants';
+import { Depth, GAME_HEIGHT, GAME_WIDTH, RANK_COMMENTS, RANK_MEANINGS, type RunResult } from '../constants';
 import { Button } from './Button';
 import { Sound } from '../systems/SoundService';
 import { hexString } from '../utils/math';
@@ -26,9 +26,36 @@ export class ResultPanel extends Phaser.GameObjects.Container {
 
     const cx = GAME_WIDTH / 2;
 
-    // ヘッダー
-    const headerText = result.cleared ? 'STAGE CLEAR' : 'GAME OVER';
-    const headerColor = result.cleared ? '#ffe066' : '#ff8a8a';
+    // ヘッダー（終了理由によって文言を切替）
+    const cleanlinessReached = result.cleanliness >= result.targetCleanliness;
+    let headerText: string;
+    let headerColor: string;
+    let subText: string;
+    if (result.cleared) {
+      if (cleanlinessReached) {
+        headerText = 'STAGE CLEAR';
+        headerColor = '#ffe066';
+        subText = `Stage ${result.levelIndex + 1} ：${result.levelName}`;
+      } else {
+        // ゴールはしたが目標クリーン度に届かなかった
+        headerText = 'STAGE CLEAR';
+        headerColor = '#ffd86b';
+        subText = `ゴールしたけど、街を十分きれいにできなかった（目標 ${result.targetCleanliness}%）`;
+      }
+    } else if (result.endReason === 'life-zero') {
+      headerText = 'GAME OVER';
+      headerColor = '#ff8a8a';
+      subText = 'ライフがなくなった';
+    } else if (result.endReason === 'time-up') {
+      headerText = 'TIME UP';
+      headerColor = '#ff8a8a';
+      subText = '時間切れ — ゴールまでたどり着けなかった';
+    } else {
+      headerText = 'GAME OVER';
+      headerColor = '#ff8a8a';
+      subText = 'もう一度トライ！';
+    }
+
     const header = scene.add
       .text(cx, 60, headerText, {
         fontFamily: 'sans-serif',
@@ -42,18 +69,15 @@ export class ResultPanel extends Phaser.GameObjects.Container {
     this.add(header);
 
     const subHeader = scene.add
-      .text(
-        cx,
-        100,
-        result.cleared ? `Stage ${result.levelIndex + 1} ：${result.levelName}` : 'もう一度トライ！',
-        {
-          fontFamily: 'sans-serif',
-          fontSize: '14px',
-          color: '#ffffff'
-        }
-      )
+      .text(cx, 100, subText, {
+        fontFamily: 'sans-serif',
+        fontSize: '14px',
+        color: '#ffffff',
+        wordWrap: { width: 720 },
+        align: 'center'
+      })
       .setOrigin(0.5)
-      .setAlpha(0.85);
+      .setAlpha(0.9);
     this.add(subHeader);
 
     // ランクサークル
@@ -77,11 +101,22 @@ export class ResultPanel extends Phaser.GameObjects.Container {
     this.add(rankRing);
     this.add(rankText);
 
-    // ランクコメント
-    const comment = scene.add
-      .text(cx, 296, result.cleared ? RANK_COMMENTS[result.rank] : '街はまだ汚れたまま…次こそは！', {
+    // ランクの短い意味（S＝かなりきれい / A＝十分 / B＝もう少し / C＝見直そう）
+    const meaning = scene.add
+      .text(cx, 282, `Rank ${result.rank} — ${RANK_MEANINGS[result.rank]}`, {
         fontFamily: 'sans-serif',
-        fontSize: '17px',
+        fontSize: '14px',
+        color: rankColorHex,
+        fontStyle: 'bold'
+      })
+      .setOrigin(0.5);
+    this.add(meaning);
+
+    // ランクコメント（長め）
+    const comment = scene.add
+      .text(cx, 306, result.cleared ? RANK_COMMENTS[result.rank] : '街はまだ汚れたまま…次こそは！', {
+        fontFamily: 'sans-serif',
+        fontSize: '16px',
         color: '#ffffff',
         wordWrap: { width: 720 },
         align: 'center'
@@ -143,6 +178,22 @@ export class ResultPanel extends Phaser.GameObjects.Container {
       this.add(label);
       this.add(value);
     });
+
+    // アドバイス（結果に応じて1つだけ表示）
+    const advice = ResultPanel.buildAdvice(result, cleanlinessReached);
+    const adviceBg = scene.add
+      .rectangle(cx, startY + 3 * rowH + 18, 720, 34, 0x10131c, 0.75)
+      .setStrokeStyle(2, 0xffe066, 0.7);
+    const adviceText = scene.add
+      .text(cx, startY + 3 * rowH + 18, `💡 ${advice}`, {
+        fontFamily: 'sans-serif',
+        fontSize: '14px',
+        color: '#ffe066',
+        fontStyle: 'bold'
+      })
+      .setOrigin(0.5);
+    this.add(adviceBg);
+    this.add(adviceText);
 
     // ボタン（次のステージがある場合は 3 ボタン）
     const hasNext = result.cleared && onNext && result.levelIndex < LEVELS.length - 1;
@@ -239,6 +290,36 @@ export class ResultPanel extends Phaser.GameObjects.Container {
         onComplete: () => rect.destroy()
       });
     }
+  }
+
+  // 1行のアドバイスを優先度順に選ぶ。最も「次に効きそう」な助言を 1 つだけ出す。
+  private static buildAdvice(result: RunResult, cleanlinessReached: boolean): string {
+    // 1. ライフ切れで終わった → 障害物対策が最優先
+    if (result.endReason === 'life-zero' || result.hits >= 3) {
+      return '障害物は早めにジャンプで避けよう（自転車・カラスはしゃがみも有効）';
+    }
+    // 2. 時間切れ → 効率を意識
+    if (result.endReason === 'time-up') {
+      return 'ゴミに寄り道しすぎず、ゴールまでの流れを意識しよう';
+    }
+    // 3. 誤った分別が目立つ → 分別ルールを意識
+    if (result.sortedWrong >= 2 && result.sortedWrong * 2 >= result.sortedCorrect) {
+      return '袋の中身を確認して、合うビンだけに投入しよう';
+    }
+    // 4. クリーン度未達 → 取り逃がしを減らす
+    if (!cleanlinessReached) {
+      return 'ゴミを取り逃がすとクリーン度が下がるよ。寄って自動取得を狙おう';
+    }
+    // 5. 分別回数が少ない → ためすぎ
+    if (result.picked >= 8 && result.sortedCorrect < Math.floor(result.picked / 3)) {
+      return '袋がいっぱいになる前に、こまめに分別しよう';
+    }
+    // 6. ハイコンボ達成 → 称賛＋分別との両立を勧める
+    if (result.maxCombo >= 7) {
+      return '連続ピックアップが上手い！次は同じ種類のままビン投入で大量得点を狙おう';
+    }
+    // 7. クリア時のデフォルト助言
+    return 'コンボとクリーン度の両立が S ランクの近道！';
   }
 
   private static rankColor(rank: 'S' | 'A' | 'B' | 'C'): number {

@@ -232,6 +232,33 @@ export class StageSelectScene extends Phaser.Scene {
         .setDepth(Depth.Hud + 1);
     }
 
+    // 攻略ポイント（tips を 1〜2 行で表示）
+    const tips = lv.tips ?? [];
+    if (tips.length > 0) {
+      const tipBaseY = statY + 48;
+      this.add
+        .text(cx, tipBaseY, '— 攻略ポイント —', {
+          fontFamily: 'sans-serif',
+          fontSize: '11px',
+          color: '#ffe066',
+          fontStyle: 'bold'
+        })
+        .setOrigin(0.5)
+        .setDepth(Depth.Hud + 1);
+      tips.slice(0, 2).forEach((t, i) => {
+        this.add
+          .text(cx, tipBaseY + 18 + i * 16, `・${t}`, {
+            fontFamily: 'sans-serif',
+            fontSize: '11px',
+            color: '#ffffff',
+            wordWrap: { width: width - 24 },
+            align: 'center'
+          })
+          .setOrigin(0.5)
+          .setDepth(Depth.Hud + 1);
+      });
+    }
+
     // PLAY / LOCK
     const btnY = cy + cardHeight / 2 - 38;
     if (unlocked) {

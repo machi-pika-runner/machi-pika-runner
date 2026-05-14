@@ -21,6 +21,7 @@ import {
   THEME_COLORS,
   Tex,
   getComboTier,
+  type EndReason,
   type Rank,
   type RunResult
 } from '../constants';
@@ -85,6 +86,9 @@ export class GameScene extends Phaser.Scene {
   private skyTopRect?: Phaser.GameObjects.Rectangle;
   private hitObstacles = new WeakSet<Obstacle>();
   private _actionWasDown = false; // タッチ action ボタンのエッジ検出用
+  private hits = 0; // 障害物に当たった回数（リザルトの advice 用）
+  private endReason: EndReason = 'cleared'; // 終了理由（endGame 時点で確定）
+  private missionCardActive = false; // ミッションカード表示中はゲーム停止
 
   // クリーン度で空色を補間（テーマで色帯が変わる）
   private bgDirty = 0x8c9eaf;
@@ -124,6 +128,9 @@ export class GameScene extends Phaser.Scene {
     this.nextAutoPickupAt = 0;
     this._actionWasDown = false;
     this.hitObstacles = new WeakSet<Obstacle>();
+    this.hits = 0;
+    this.endReason = 'cleared';
+    this.missionCardActive = false;
 
     // 物理ワールドの一時停止解除（前回ポーズ状態が残らないように）
     this.physics.world.isPaused = false;
@@ -264,10 +271,13 @@ export class GameScene extends Phaser.Scene {
       delay: 1000,
       loop: true,
       callback: () => {
-        if (this.paused || this.isOver) return;
+        if (this.paused || this.isOver || this.missionCardActive) return;
         this.timeLeft = Math.max(0, this.timeLeft - 1);
         this.hud.setTime(this.timeLeft);
-        if (this.timeLeft === 0) this.endGame(false);
+        if (this.timeLeft === 0) {
+          this.endReason = 'time-up';
+          this.endGame(false);
+        }
       }
     });
 
@@ -276,15 +286,15 @@ export class GameScene extends Phaser.Scene {
     // タッチデバイスなら仮想ボタンを表示
     new TouchControls(this, this.input2);
 
-    // 開始トースト
-    this.hud.toast(`Stage ${this.levelIndex + 1} : ${this.level.name}`, '#ffe066', 1600);
-
     // BGM 開始（シーン終了時に自動停止）
     Sound.startBgm();
     this.events.once('shutdown', () => Sound.stopBgm());
 
     // クリーン度変化 → BGM レイヤ更新
     this.cleanliness.on('change', (v: number) => Sound.setBgmCleanliness(v));
+
+    // ミッションカード（短いステージ概要）。プレイ開始の前に表示。
+    this.showMissionCard();
   }
 
   // ---------------- 背景 ----------------
@@ -476,6 +486,23 @@ export class GameScene extends Phaser.Scene {
       this.recordDebugFrame(_time, delta, wasOver, wasPaused);
       return;
     }
+
+    // ミッションカード表示中は早期 return（任意の入力で即スキップ可能）
+    if (this.missionCardActive) {
+      if (
+        this.input2.justPressed('jump') ||
+        this.input2.justPressed('action') ||
+        this.input2.justPressed('sort') ||
+        this.input2.justPressed('pickup') ||
+        this.input2.isDown('left') ||
+        this.input2.isDown('right')
+      ) {
+        this.hideMissionCard();
+      }
+      this.recordDebugFrame(_time, delta, wasOver, wasPaused);
+      return;
+    }
+
     this.elapsed += delta;
 
     // ポーズトグル
@@ -613,6 +640,131 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
+  // ───────── ミッションカード ─────────
+  // ステージ開始前に短く目的・注意点を表示。任意の入力 or 2.5 秒経過で閉じる。
+  private missionCardContainer?: Phaser.GameObjects.Container;
+  private missionCardTimer?: Phaser.Time.TimerEvent;
+
+  private showMissionCard(): void {
+    this.missionCardActive = true;
+    const cx = GAME_WIDTH / 2;
+    const cy = GAME_HEIGHT / 2;
+
+    const root = this.add.container(0, 0).setScrollFactor(0).setDepth(Depth.Overlay);
+    const dim = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x10131c, 0.55).setOrigin(0, 0);
+    root.add(dim);
+
+    const panel = this.add
+      .rectangle(cx, cy, 640, 360, 0x1c2233, 0.96)
+      .setStrokeStyle(3, 0xffe066, 1);
+    root.add(panel);
+
+    // タイトル：Stage N : 名前
+    root.add(
+      this.add
+        .text(cx, cy - 140, `STAGE ${this.levelIndex + 1}`, {
+          fontFamily: 'sans-serif',
+          fontSize: '14px',
+          color: '#10131c',
+          backgroundColor: '#ffe066',
+          padding: { x: 8, y: 3 },
+          fontStyle: 'bold'
+        })
+        .setOrigin(0.5)
+    );
+    root.add(
+      this.add
+        .text(cx, cy - 100, this.level.name, {
+          fontFamily: 'sans-serif',
+          fontSize: '28px',
+          color: '#ffe066',
+          fontStyle: 'bold',
+          stroke: '#3a2a00',
+          strokeThickness: 4
+        })
+        .setOrigin(0.5)
+    );
+
+    // 基本目的
+    root.add(
+      this.add
+        .text(cx, cy - 56, '拾う → 分別 → クリーン度を上げてゴール', {
+          fontFamily: 'sans-serif',
+          fontSize: '15px',
+          color: '#ffffff'
+        })
+        .setOrigin(0.5)
+        .setAlpha(0.9)
+    );
+
+    // 目標 / 時間
+    root.add(
+      this.add
+        .text(cx, cy - 24, `🎯 目標クリーン度 ${this.level.targetCleanliness}%   ⏱ 制限 ${this.level.timeLimit}秒`, {
+          fontFamily: 'sans-serif',
+          fontSize: '15px',
+          color: '#a6e3ff',
+          fontStyle: 'bold'
+        })
+        .setOrigin(0.5)
+    );
+
+    // 注意点（tips）
+    const tips = this.level.tips ?? [];
+    tips.forEach((t, i) => {
+      root.add(
+        this.add
+          .text(cx, cy + 12 + i * 22, `・${t}`, {
+            fontFamily: 'sans-serif',
+            fontSize: '14px',
+            color: '#ffffff'
+          })
+          .setOrigin(0.5)
+      );
+    });
+
+    // スキップ案内
+    root.add(
+      this.add
+        .text(cx, cy + 140, '何か入力でスキップ', {
+          fontFamily: 'sans-serif',
+          fontSize: '12px',
+          color: '#a6e3ff'
+        })
+        .setOrigin(0.5)
+        .setAlpha(0.85)
+    );
+
+    // dim 部分のクリックでもスキップ
+    dim.setInteractive();
+    dim.on('pointerdown', () => this.hideMissionCard());
+
+    // 入場フェード
+    root.setAlpha(0);
+    this.tweens.add({ targets: root, alpha: 1, duration: 220 });
+
+    this.missionCardContainer = root;
+    this.missionCardTimer = this.time.delayedCall(2500, () => this.hideMissionCard());
+  }
+
+  private hideMissionCard(): void {
+    if (!this.missionCardActive) return;
+    this.missionCardActive = false;
+    if (this.missionCardTimer) {
+      this.missionCardTimer.remove(false);
+      this.missionCardTimer = undefined;
+    }
+    const root = this.missionCardContainer;
+    this.missionCardContainer = undefined;
+    if (!root) return;
+    this.tweens.add({
+      targets: root,
+      alpha: 0,
+      duration: 180,
+      onComplete: () => root.destroy()
+    });
+  }
+
   // 診断用：scene 状態スナップショット（window.__MACHI_DEBUG__.dump() から呼ばれる）
   debugSnapshot(): unknown {
     return {
@@ -659,8 +811,13 @@ export class GameScene extends Phaser.Scene {
     trash.pickUp();
 
     // ステート更新
+    const comboBefore = this.combo.count;
     this.held.push(trash.kind);
     const comboCount = this.combo.registerPick(trash.kind);
+    // 異なる種類で連鎖が切れた時の明示表示（コンボ ≧ 2 → 1 への低下）
+    if (comboBefore >= 2 && comboCount === 1) {
+      this.spawnFloatText(this.player.x, this.player.y - 108, 'COMBO BREAK', '#ff8a8a');
+    }
     const gained = this.score.addPick(comboCount);
     this.cleanliness.add(CLEANLINESS_PICK_GAIN);
     this.refreshBagUI();
@@ -837,13 +994,23 @@ export class GameScene extends Phaser.Scene {
     }
 
     if (obs.damage > 0) {
+      const comboBefore = this.combo.count;
       const alive = this.player.takeDamage();
       this.cleanliness.add(-CLEANLINESS_HIT_PENALTY);
       this.combo.reset();
       this.hud.setLife(this.player.life);
+      this.hits += 1;
       this.cameras.main.shake(180, 0.005);
-      this.spawnFloatText(this.player.x, this.player.y - 80, 'OUCH!', '#ff8080');
-      if (!alive) this.endGame(false);
+      // ダメージ表示：意味が一目で分かる「ライフ -1」に統一
+      this.spawnFloatText(this.player.x, this.player.y - 80, 'ライフ -1', '#ff8080');
+      // 連鎖が切れたことを明示（コンボ ≧ 2 のみ）
+      if (comboBefore >= 2) {
+        this.spawnFloatText(this.player.x, this.player.y - 108, 'COMBO BREAK', '#ff8a8a');
+      }
+      if (!alive) {
+        this.endReason = 'life-zero';
+        this.endGame(false);
+      }
     }
   }
 
@@ -1093,7 +1260,10 @@ export class GameScene extends Phaser.Scene {
       rank,
       maxCombo: this.combo.max,
       levelIndex: this.levelIndex,
-      levelName: this.level.name
+      levelName: this.level.name,
+      endReason: cleared ? 'cleared' : this.endReason,
+      hits: this.hits,
+      targetCleanliness: this.level.targetCleanliness
     };
 
     // 一拍おいてリザルトへ

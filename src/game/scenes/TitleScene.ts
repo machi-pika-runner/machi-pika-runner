@@ -1,9 +1,11 @@
 import Phaser from 'phaser';
-import { Depth, GAME_HEIGHT, GAME_WIDTH, SceneKeys, Tex } from '../constants';
+import { Depth, GAME_HEIGHT, GAME_WIDTH, RANK_MEANINGS, SceneKeys, Tex } from '../constants';
 import { Button } from '../ui/Button';
 import { TRASH_KINDS, TRASH_TYPES } from '../data/trashTypes';
 import { loadHighScore } from '../utils/storage';
 import { Sound } from '../systems/SoundService';
+
+type HelpTab = 'controls' | 'rules';
 
 // 朝の公園・街並みの簡易表現＋大きめロゴ＋START / HOW TO PLAY。
 // HOW TO PLAY は同シーン上にオーバーレイで重ねる。
@@ -11,6 +13,8 @@ export class TitleScene extends Phaser.Scene {
   private helpOverlay?: Phaser.GameObjects.Container;
   private helpVisible = false;
   private startGuardUntil = 0; // オーバーレイ閉じ直後の誤発火を防ぐ
+  private helpTab: HelpTab = 'controls';
+  private helpContentContainer?: Phaser.GameObjects.Container; // 内容部分（タブ切替で差し替え）
 
   constructor() {
     super(SceneKeys.Title);
@@ -340,13 +344,13 @@ export class TitleScene extends Phaser.Scene {
     root.add(bg);
 
     const panel = this.add
-      .rectangle(cx, cy, 760, 480, 0x1c2233, 0.95)
+      .rectangle(cx, cy, 820, 520, 0x1c2233, 0.95)
       .setStrokeStyle(3, 0xffe066, 1);
     root.add(panel);
 
     root.add(
       this.add
-        .text(cx, cy - 210, 'HOW TO PLAY', {
+        .text(cx, cy - 232, 'HOW TO PLAY', {
           fontFamily: 'sans-serif',
           fontSize: '28px',
           color: '#ffe066',
@@ -355,58 +359,28 @@ export class TitleScene extends Phaser.Scene {
         .setOrigin(0.5)
     );
 
-    const lines: Array<[string, string]> = [
-      ['← / → または A / D', '左右に走る'],
-      ['Space / ↑ / W', 'ジャンプ（長押しで高く跳ぶ）'],
-      ['↓ / S', 'しゃがむ（自転車・カラスを避けられる）'],
-      ['E（押しっぱなしOK）', '近くのゴミを拾う'],
-      ['F', '近くの分別ボックスに、合うゴミだけを投入'],
-      ['P', '一時停止 / 再開'],
-      ['R', 'リスタート']
-    ];
-    lines.forEach((row, i) => {
-      const y = cy - 150 + i * 32;
-      root.add(
-        this.add
-          .text(cx - 320, y, row[0], {
-            fontFamily: 'sans-serif',
-            fontSize: '18px',
-            color: '#ffe066',
-            fontStyle: 'bold'
-          })
-          .setOrigin(0, 0.5)
-      );
-      root.add(
-        this.add
-          .text(cx - 40, y, row[1], {
-            fontFamily: 'sans-serif',
-            fontSize: '17px',
-            color: '#ffffff'
-          })
-          .setOrigin(0, 0.5)
-      );
-    });
+    // タブ：操作 / ルール
+    this.helpTab = 'controls';
+    const tabControls = new Button(
+      this, cx - 90, cy - 190, '操作',
+      () => this.switchHelpTab('controls'),
+      { width: 160, height: 32, fontSize: 14, bg: 0xff7a3d, bgHover: 0xffa672 }
+    );
+    const tabRules = new Button(
+      this, cx + 90, cy - 190, 'ルール',
+      () => this.switchHelpTab('rules'),
+      { width: 160, height: 32, fontSize: 14, bg: 0x4aa8e0, bgHover: 0x7cc6f1 }
+    );
+    root.add(tabControls);
+    root.add(tabRules);
 
-    // 遊び方Tip
-    const tip = [
-      'Tip 1: 同じ種類のゴミを連続で拾うとコンボ倍率が上がってスコアが伸びる。',
-      'Tip 2: 分別ボックスに近づくと「F: ◯個 投入できる！」のヒントが出るよ。',
-      'Tip 3: 袋が満杯になったら頭上に「FULL!」が点灯。早めに投入しよう。'
-    ];
-    tip.forEach((t, i) => {
-      root.add(
-        this.add
-          .text(cx, cy + 110 + i * 22, t, {
-            fontFamily: 'sans-serif',
-            fontSize: '13px',
-            color: '#a6e3ff'
-          })
-          .setOrigin(0.5)
-      );
-    });
+    // 内容コンテナ
+    this.helpContentContainer = this.add.container(0, 0);
+    root.add(this.helpContentContainer);
+    this.renderHelpContent();
 
     // 閉じるボタン
-    const close = new Button(this, cx, cy + 200, '閉じる', () => this.toggleHelp(false), {
+    const close = new Button(this, cx, cy + 224, '閉じる', () => this.toggleHelp(false), {
       width: 180,
       height: 44,
       fontSize: 18,
@@ -423,6 +397,197 @@ export class TitleScene extends Phaser.Scene {
     this.tweens.add({ targets: root, alpha: 1, duration: 200 });
 
     return root;
+  }
+
+  private switchHelpTab(tab: HelpTab): void {
+    if (this.helpTab === tab) return;
+    this.helpTab = tab;
+    this.renderHelpContent();
+  }
+
+  private renderHelpContent(): void {
+    const c = this.helpContentContainer;
+    if (!c) return;
+    c.removeAll(true);
+    const cx = GAME_WIDTH / 2;
+    const cy = GAME_HEIGHT / 2;
+
+    if (this.helpTab === 'controls') {
+      // 操作タブ
+      const lines: Array<[string, string]> = [
+        ['← / → または A / D', '左右に走る'],
+        ['Space / ↑ / W', 'ジャンプ（長押しで高く跳ぶ）'],
+        ['↓ / S', 'しゃがむ（自転車・カラスを避けられる）'],
+        ['E（押しっぱなしOK）', '近くのゴミを手動で拾う'],
+        ['F / Z / X', '分別ボックスに、合うゴミだけを投入'],
+        ['P', '一時停止 / 再開'],
+        ['R', 'リスタート']
+      ];
+      lines.forEach((row, i) => {
+        const y = cy - 150 + i * 30;
+        c.add(
+          this.add
+            .text(cx - 340, y, row[0], {
+              fontFamily: 'sans-serif',
+              fontSize: '16px',
+              color: '#ffe066',
+              fontStyle: 'bold'
+            })
+            .setOrigin(0, 0.5)
+        );
+        c.add(
+          this.add
+            .text(cx - 50, y, row[1], {
+              fontFamily: 'sans-serif',
+              fontSize: '15px',
+              color: '#ffffff'
+            })
+            .setOrigin(0, 0.5)
+        );
+      });
+      // 操作のコツ
+      const tips = [
+        '・近くを通るだけでもゴミは自動で拾える（Mario のコイン同様）',
+        '・タッチ操作：◀ ▶ A(JUMP) B(分別) の4ボタン',
+        '・同じ種類のゴミを連続で拾うとコンボ倍率がアップ'
+      ];
+      tips.forEach((t, i) => {
+        c.add(
+          this.add
+            .text(cx, cy + 100 + i * 22, t, {
+              fontFamily: 'sans-serif',
+              fontSize: '13px',
+              color: '#a6e3ff'
+            })
+            .setOrigin(0.5)
+        );
+      });
+    } else {
+      // ルールタブ
+      // 目的
+      c.add(
+        this.add
+          .text(cx - 380, cy - 152, '【目的】', {
+            fontFamily: 'sans-serif',
+            fontSize: '15px',
+            color: '#ffe066',
+            fontStyle: 'bold'
+          })
+          .setOrigin(0, 0.5)
+      );
+      c.add(
+        this.add
+          .text(cx - 380, cy - 128, 'ゴミを拾って、正しく分別し、クリーン度を上げてゴール', {
+            fontFamily: 'sans-serif',
+            fontSize: '14px',
+            color: '#ffffff'
+          })
+          .setOrigin(0, 0.5)
+      );
+
+      // 良い行動
+      c.add(
+        this.add
+          .text(cx - 380, cy - 92, '【良い行動】', {
+            fontFamily: 'sans-serif',
+            fontSize: '15px',
+            color: '#a6ffb6',
+            fontStyle: 'bold'
+          })
+          .setOrigin(0, 0.5)
+      );
+      const goods = [
+        'ゴミを拾う：スコアUP',
+        '連続で拾う：コンボUP（最大 x2.5）',
+        '正しく分別：高得点 +220〜',
+        'ゴミを取り逃がさない：クリーン度UP'
+      ];
+      goods.forEach((g, i) => {
+        c.add(
+          this.add
+            .text(cx - 360, cy - 68 + i * 22, `・${g}`, {
+              fontFamily: 'sans-serif',
+              fontSize: '13px',
+              color: '#ffffff'
+            })
+            .setOrigin(0, 0.5)
+        );
+      });
+
+      // 注意
+      c.add(
+        this.add
+          .text(cx + 30, cy - 92, '【注意】', {
+            fontFamily: 'sans-serif',
+            fontSize: '15px',
+            color: '#ff8a8a',
+            fontStyle: 'bold'
+          })
+          .setOrigin(0, 0.5)
+      );
+      const bads = [
+        '障害物に当たる：ライフ -1',
+        'ゴミを取り逃がす：クリーン度 -',
+        '袋がいっぱい：分別するまで拾えない',
+        '時間切れ / ライフ0：ゲームオーバー'
+      ];
+      bads.forEach((b, i) => {
+        c.add(
+          this.add
+            .text(cx + 50, cy - 68 + i * 22, `・${b}`, {
+              fontFamily: 'sans-serif',
+              fontSize: '13px',
+              color: '#ffffff'
+            })
+            .setOrigin(0, 0.5)
+        );
+      });
+
+      // ランクの意味
+      c.add(
+        this.add
+          .text(cx - 380, cy + 40, '【ランク】（目標クリーン度を基準に判定）', {
+            fontFamily: 'sans-serif',
+            fontSize: '15px',
+            color: '#ffe066',
+            fontStyle: 'bold'
+          })
+          .setOrigin(0, 0.5)
+      );
+      const ranks: Array<['S' | 'A' | 'B' | 'C', string]> = [
+        ['S', RANK_MEANINGS.S],
+        ['A', RANK_MEANINGS.A],
+        ['B', RANK_MEANINGS.B],
+        ['C', RANK_MEANINGS.C]
+      ];
+      ranks.forEach((r, i) => {
+        const colW = 180;
+        const col = i % 2;
+        const row = Math.floor(i / 2);
+        const x = cx - 360 + col * colW;
+        const y = cy + 64 + row * 22;
+        c.add(
+          this.add
+            .text(x, y, `${r[0]}：${r[1]}`, {
+              fontFamily: 'sans-serif',
+              fontSize: '13px',
+              color: '#ffffff'
+            })
+            .setOrigin(0, 0.5)
+        );
+      });
+
+      // 上達のコツ
+      c.add(
+        this.add
+          .text(cx, cy + 138, '上達のコツ：同じ種類で連続コンボ → ビン到達でまとめて分別！', {
+            fontFamily: 'sans-serif',
+            fontSize: '13px',
+            color: '#a6e3ff'
+          })
+          .setOrigin(0.5)
+      );
+    }
   }
 
   // ── スタート ──────────────────────────────────────────

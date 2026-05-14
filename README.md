@@ -8,13 +8,70 @@
 
 ## ハイライト
 
-- 4 ステージ（朝の公園 / 川沿い / 駅前商店街 / 海辺）。各ステージは時間・目標・テーマ・障害物パターンが異なる
-- モダンプラットフォーマー的なジャンプ：コヨーテタイム・ジャンプバッファ・可変高ジャンプ・連続ジャンプ不可
-- E 長押しで自動取得 / コンボ倍率（最大 x2.5）/ 分別ボックスは「合うゴミだけ」投入
-- WebAudio 自前合成の効果音（拾う・分別・ジャンプ・着地・被弾・滑り・ゴール・ボタン …）
+- **4 ステージ構成**：朝の公園 / 川沿い / 駅前商店街 / 海辺。各ステージは時間・目標クリーン度・テーマ・障害物パターンが異なる
+- **マリオ風の操作**：左右 + A=JUMP / B=分別 の最小限。**ゴミは近くを通るだけで自動取得**
+- モダンプラットフォーマー的なジャンプ：コヨーテタイム・ジャンプバッファ・可変高ジャンプ
+- コンボ倍率（最大 x2.5）/ 分別ボックスは「合うゴミだけ」投入
+- **3層 BGM**：クリーン度に応じてメロディとハーモニーが追加される
+- **4層パララックス**：山影 → 山影 → 樹木シルエット → 雲
 - HUD：スコア・倍率バッジ・クリーン度バー・時間・袋・コンボ・ライフ・ミュートトグル
-- スマホ向け仮想ボタン（タッチデバイス自動検出）
+- スマホ向け仮想ボタン（タッチデバイス自動検出 / ◀ ▶ A B の 4 ボタン）
 - 色覚多様性配慮：ゴミに頭文字バッジ、ビンに略号と受入記号を併記
+
+---
+
+## ゲームの目的（はじめての方へ）
+
+**ゴミを拾って、正しく分別し、クリーン度を上げてゴールを目指す**ゲームです。
+
+### 何をすればいい？
+1. 右に走ってゴール旗まで到達する
+2. 落ちているゴミに近づく → **自動で拾える**
+3. 分別ボックスに近づく → **B / F / Z / X** で「合うゴミだけ」投入
+4. 障害物（水たまり・コーン・自転車・カラス・立看板）は避ける
+5. 制限時間内にゴールしてクリア
+
+### 良い行動 / 悪い行動
+
+| 良い行動 | 効果 |
+|---|---|
+| ゴミを拾う | スコア +90〜 / クリーン度UP |
+| 同じ種類で連続取得 | コンボ倍率 UP（最大 x2.5） |
+| 正しく分別 | +220〜 の高得点 |
+| ゴミを取り逃がさない | クリーン度を維持 |
+
+| 注意すべき行動 | 影響 |
+|---|---|
+| 障害物に当たる | ライフ -1（クリーン度も減） |
+| ゴミを取り逃がす（画面外に流れる） | クリーン度 - |
+| 違う種類のゴミを拾う | コンボが切れる（COMBO BREAK） |
+| 袋がいっぱい | 分別するまで拾えない |
+| 時間切れ / ライフ0 | ゲームオーバー |
+
+### クリア／失敗の条件
+
+- **STAGE CLEAR**：ゴール旗まで到達
+- **STAGE CLEAR（クリーン度未達）**：ゴールはしたが目標クリーン度に届かず、街は十分にきれいにならなかった
+- **GAME OVER**：ライフが 0 になった
+- **TIME UP**：時間切れでゴールに到達できなかった
+
+### S/A/B/Cランクの意味（目標クリーン度を基準に判定）
+
+| ランク | 意味 |
+|---|---|
+| **S** | かなりきれいにできた（目標 +15% 以上） |
+| **A** | 十分クリア（目標達成） |
+| **B** | もう少し拾える（目標 -15% 以内） |
+| **C** | 分別と回避を見直そう |
+
+### ステージ別の攻略ポイント
+
+| ステージ | テーマ | 制限 | 目標 | 攻略ポイント |
+|---|---|---|---|---|
+| 1. 朝の公園コース | 公園 | 120秒 | 60% | 基本ルールを覚えるステージ。ゴミ拾いと分別の練習 |
+| 2. 川沿いランニングコース | 川辺 | 140秒 | 65% | 水たまりは滑る。ジャンプで回避。ビニール袋は風で揺れる |
+| 3. 駅前・商店街コース | 街 | 130秒 | 70% | 自転車・立看板を避けろ。袋がいっぱいになる前に早めに分別 |
+| 4. 海辺クリーンアップ | 海辺 | 150秒 | 75% | 風で動くゴミを追いかける。取り逃がしを減らしてクリーン度を死守 |
 
 ---
 
@@ -23,7 +80,7 @@
 本作は **完全オリジナル作品** です。
 キャラクター・名称・音楽・効果音・ステージ・敵キャラ・アイテム・ロゴ・UIなど、
 **既存IPの利用・模倣は一切ありません。**
-スプライトはすべて Phaser の `Graphics` API による動的生成で作っており、
+スプライトはすべて Phaser の `Graphics` API による動的生成、音声は WebAudio の自前合成で作っており、
 外部素材（画像・音声）は同梱していません。
 
 ---
@@ -32,49 +89,34 @@
 
 ### 必要環境
 - Node.js 18 以上
-- npm 9 以上（同梱バージョンで動作確認）
+- npm 9 以上
 - モダンブラウザ（Chrome / Edge / Firefox / Safari）
 
 ### セットアップと実行
 
 ```bash
-# 依存パッケージをインストール
-npm install
-
-# 開発サーバを起動（http://localhost:5173 が自動で開きます）
-npm run dev
-
-# 本番ビルド（dist/ に出力）
-npm run build
-
-# ビルド成果物のプレビュー
-npm run preview
-
-# Lint
-npm run lint
-
-# 単体テスト（純粋ロジック）
-npm run test
-
-# 整形
-npm run format
+npm install     # 依存パッケージ
+npm run dev     # 開発サーバ（http://localhost:5173）
+npm run build   # 本番ビルド（dist/）
+npm run preview # ビルド成果物のプレビュー
+npm run lint    # ESLint
+npm run test    # vitest（31 テスト）
+npm run format  # Prettier
 ```
 
 ---
 
 ## デプロイ（GitHub Pages）
 
-このリポジトリには `/.github/workflows/deploy.yml` を同梱しています。
-`main` または `master` ブランチに push すれば、自動で
-1. `npm ci → npm run lint → npm run test → npm run build` が走り
-2. `dist/` が GitHub Pages にデプロイされます
+`.github/workflows/deploy.yml` 同梱。`main` または `master` に push すれば、自動で
+`npm ci → lint → test → build → Pages デプロイ` が走ります。
 
 リポジトリ側の準備（一度だけ）：
-1. GitHub の **Settings → Pages → Build and deployment → Source** を **GitHub Actions** に変更
+1. **Settings → Pages → Build and deployment → Source** を **GitHub Actions** に
 2. push すると Actions タブから進行を確認できます
 
-`vite.config.ts` の `base: './'` を採用しているので、リポジトリ名がパスに含まれていても
-そのまま動きます（プロジェクトページ・ユーザーページの両方に対応）。
+公開 URL（このリポジトリの場合）：
+`https://keigofukada.github.io/machi-pika-runner/`
 
 ---
 
@@ -86,10 +128,10 @@ npm run format
 |---|---|
 | ← / A | 左へ移動 |
 | → / D | 右へ移動 |
-| Space / ↑ / W | ジャンプ（長押しで高く・離して上昇カット・連続ジャンプ不可） |
+| Space / ↑ / W | ジャンプ（長押しで高く・離して上昇カット） |
 | ↓ / S | しゃがむ（自転車・カラスを回避） |
-| **E** | 近くのゴミを拾う |
-| **F** | 近くの分別ボックスに投入 |
+| **B ボタン / F / Z / X** | 分別ボックスへ投入（アクション） |
+| **E** | 手動でゴミを拾う（普段は近接で自動取得） |
 | P | 一時停止 / 再開 |
 | R | リスタート |
 
@@ -99,188 +141,135 @@ npm run format
 
 タッチデバイスを検出すると、画面下に自動で半透明の仮想ボタンが現れます。
 - 左下：◀ ▶（移動）
-- 右下：分別 / 拾う / ジャンプ
-
-横持ちで遊ぶことを想定しています。ボタンはコーナーに寄せて配置しているため、
-プレイヤーや HUD と被りません。
+- 右下：**A = JUMP / B = 分別** の 2 ボタン
+- ゴミ拾いは近づくだけで自動取得
 
 ---
 
-## 遊び方
+## ゲームフロー
 
-1. ステージ（朝の公園コース）を右へ走る
-2. 道に落ちている **5 種類のゴミ** を E で拾う（押しっぱなしでも自動で連続取得）
-3. 障害物（水たまり、コーン、自転車、カラス）を避ける（しゃがみで自転車・カラスは回避可能）
-4. **分別ボックス** に近づき F を押すと、**そのカテゴリと一致するゴミだけ** 袋から投入
-5. 一致しないゴミは袋に残るので、別のボックスへ持って行ける
-6. ボックス上に「F: ◯個 投入できる！」/「ここでは投入できないよ」のヒントが出る
-7. 同じ種類のゴミを連続で拾うと **コンボ** が伸び、スコアが加速
-8. 一定数拾うと **ゴミ袋の容量がアップ**。袋が満杯になると赤点滅＋頭上に "FULL!" 表示
-9. 制限時間内にゴール旗まで到達すれば **クリア**
-10. 最終的な **クリーン度** で S / A / B / C ランクが決まる
-
-### ステージ1の構成
-ビンの直前に同種ゴミのクラスタが置かれており、
-**コンボ → クラスタ全投入 → 大きなボーナス** という気持ちよさが連続するよう設計しています。
-- 紙くずクラスタ → 燃えるごみビン
-- ペットボトル＋空き缶 → 資源ごみビン
-- ビニール袋クラスタ → プラスチックビン
-- 食品ごみクラスタ → 食品ごみビン
-
-### ゴミと分別の対応
-
-| ゴミ | カテゴリ |
-|---|---|
-| 紙くず | 燃えるごみ |
-| ペットボトル | 資源ごみ |
-| 空き缶 | 資源ごみ |
-| ビニール袋 | プラスチック |
-| 食品ごみ | 食品ごみ |
-
-### 演出
-- クリーン度が上がると **背景の濁りが減る → 花が咲く → 鳥が飛ぶ** と段階的に変化します
-- ゴール時にはリザルト画面でランクとスコアの内訳が表示され、ハイスコアは LocalStorage に保存されます
+1. **タイトル画面** → START（または Enter / Space）
+2. **HOW TO PLAY** ボタンで操作・ルールを確認可能（タブ切替）
+3. **ステージセレクト** → ステージカードで攻略ポイントと目標を確認 → PLAY
+4. **ミッションカード**（2.5 秒、入力でスキップ可能）でステージ概要を表示
+5. **プレイ** → ゴール到達 or 時間切れ or ライフ 0
+6. **リザルト画面** → ランク・スコア・統計・改善アドバイス・もう一度／次のステージ
 
 ---
 
 ## 技術スタック
 
 - [Vite 5](https://vitejs.dev/) … 開発サーバ／ビルダ
-- TypeScript 5 … strict 設定（`noUnusedLocals` `noUnusedParameters` 含む）
+- TypeScript 5 strict（`noUnusedLocals` `noUnusedParameters` 含む）
 - [Phaser 3](https://phaser.io/) … 2D ゲームエンジン（Arcade Physics）
 - ESLint + @typescript-eslint
 - Prettier
+- vitest + jsdom（31 テスト：ScoreManager / CleanlinessManager / ComboManager / レベルデータ / math）
 
-外部画像・音源は使用していません。スプライトは `Phaser.Graphics` で実行時に生成し、
-将来 PNG/SVG 等に差し替える場合は `src/game/utils/assetFactory.ts` の各
-`generateXxx` 関数を `scene.load.image()` 等に置き換えるだけで対応できる構造です。
+スプライトは `Phaser.Graphics` の実行時生成、音声は WebAudio の自前合成。
+PNG/SVG 素材へ差し替えるには `src/game/utils/assetFactory.ts` の各
+`generateXxx` 関数を `scene.load.image()` 等に置き換えるだけで OK。
 
 ---
 
-## ディレクトリ構成
+## ディレクトリ構成（要点）
 
 ```
-machi-pika-runner/
-├ index.html
-├ package.json / tsconfig.json / vite.config.ts / .eslintrc.cjs / .prettierrc
-└ src/
-   ├ main.ts
-   └ game/
-      ├ config.ts            … Phaser ゲーム設定
-      ├ constants.ts         … 画面サイズ・スコア・テクスチャキー等
-      ├ scenes/
-      │  ├ BootScene.ts      … 仮素材生成、ロゴ表示
-      │  ├ TitleScene.ts     … タイトル・操作説明・凡例・スタートボタン
-      │  ├ GameScene.ts      … 本編（ステージ・ループ・演出）
-      │  └ ResultScene.ts    … リザルトとハイスコア保存
-      ├ entities/
-      │  ├ Player.ts         … 走る／ジャンプ／しゃがむ／無敵／滑り
-      │  ├ TrashItem.ts      … ふわふわ浮遊するゴミ
-      │  ├ Obstacle.ts       … 水たまり / コーン / 自転車 / カラス
-      │  └ SortingBin.ts     … 分別ボックス（ラベル＋プロンプト付）
-      ├ systems/
-      │  ├ InputManager.ts   … キーボード抽象化（仮想ボタン拡張可）
-      │  ├ ScoreManager.ts   … スコア・拾得数・正誤分別数を保持（コンボ倍率反映）
-      │  ├ CleanlinessManager.ts … クリーン度メーター
-      │  ├ ComboManager.ts   … 同一種ゴミ連続コンボ + 最大コンボ追跡
-      │  ├ LevelManager.ts   … LevelDef からオブジェクト配置
-      │  ├ CollisionManager.ts … 衝突セットアップを薄くまとめる
-      │  └ SoundService.ts   … WebAudio による効果音の自前合成（外部音源ゼロ）
-      ├ data/
-      │  ├ levels.ts         … ステージ定義（現状ステージ1）
-      │  ├ trashTypes.ts     … ゴミ／分別カテゴリ
-      │  └ obstacleTypes.ts  … 障害物パラメータ
-      ├ ui/
-      │  ├ HUD.ts            … スコア / クリーン度 / 時間 / 袋 / コンボ / 手持ち / トースト
-      │  ├ Button.ts         … 共通テキストボタン
-      │  └ ResultPanel.ts    … リザルトパネル
-      └ utils/
-         ├ assetFactory.ts   … Graphics による全テクスチャ生成
-         ├ math.ts
-         └ storage.ts        … LocalStorage ハイスコア
+src/
+├ main.ts                       … エントリ（?debug=1 で診断有効化）
+└ game/
+   ├ config.ts / constants.ts
+   ├ scenes/                    … BootScene / TitleScene / StageSelectScene / GameScene / ResultScene
+   ├ entities/                  … Player / TrashItem / Obstacle / SortingBin
+   ├ systems/                   … Input / Score / Cleanliness / Combo / Level / Collision / Sound (+BGM)
+   ├ data/                      … levels(4ステージ) / trashTypes / obstacleTypes
+   ├ ui/                        … HUD / Button / ResultPanel / TouchControls
+   └ utils/                     … assetFactory / math / storage / debugDiagnostics
 ```
 
-責務分離により、`GameScene` がメインループに集中し、
-各システム（スコア／クリーン度／コンボ／衝突／レベル配置）と
-各エンティティ（プレイヤー／ゴミ／障害物／ボックス）が独立しています。
+---
+
+## デバッグ・診断機能
+
+フリーズなどの不具合を切り分けるための診断ハーネスを同梱しています。
+**本番挙動は変えません**（`?debug=1` が無ければ全て No-op）。
+
+### `?debug=1` を URL に付けて起動
+
+```
+http://localhost:5173/?debug=1
+https://keigofukada.github.io/machi-pika-runner/?debug=1
+```
+
+起動すると Console に以下が出ます：
+```
+[MACHI_DEBUG] enabled (noScaleTween=false)
+[MACHI_DEBUG] window.__MACHI_DEBUG__ available. Try .dump() / ...
+```
+
+### `window.__MACHI_DEBUG__` API
+
+| API | 動作 |
+|---|---|
+| `dump()` | scene / player / input / 直近 30 フレーム / イベント履歴を console.warn |
+| `lastFrames(n=30)` | 直近 n フレームの snapshot 配列 |
+| `lastEvents(n=20)` | 直近 n イベント（blur / visibilitychange / forceResume 等） |
+| `getCurrentSnapshot()` | 最新 1 フレーム |
+| `forceResume()` | `physics.world.isPaused=false` + `scene.resume()`（フリーズ解除試行） |
+| `resetInput()` | 仮想ボタン全クリア + `keyboard.resetKeys()` |
+| `game / scene / player` | 各オブジェクトへの参照 |
+
+### フリーズ watchdog（6 条件、2 秒クールダウン）
+
+- **A**: left/right=true なのに 500ms 以上 player.x が変化しない
+- **B**: input true なのに calcVx=0
+- **C**: calcVx≠0 なのに body.velocity.x=0
+- **D**: body.velocity.x≠0 なのに player.x が変化しない
+- **E**: paused=false かつ isOver=false なのに physics.world.isPaused=true
+- **F**: body.enable=false または body.moves=false
+
+検知時のみ `console.warn` で「条件 / 現在 snapshot / 直近 30 フレーム / 直近 20 イベント」が出力されます。
+
+### `?noScaleTween=1`
+
+```
+?debug=1&noScaleTween=1
+```
+
+ジャンプ・着地の squash scale tween を完全無効化。
+「scale tween がフリーズの原因か？」を A/B 切り分けるための分離フラグです。
+
+### debug=1 時だけ追加される安全防御
+
+- `window.blur` / `document.visibilitychange (hidden)` / `Phaser.Scenes.Events.RESUME` で
+  `InputManager.resetAll()` を実行（スタックキー対策）
 
 ---
 
-## 実装済みの主な機能
+## ゲーム内アクション・フィードバック早見表
 
-### 画面・シーン
-- BootScene → TitleScene → GameScene → ResultScene のシーン遷移
-- **タイトル画面**：朝の街並み（街シルエット＋太陽＋雲＋公園）、大ロゴ、START / HOW TO PLAY ボタン、ハイスコア表示
-- **HOW TO PLAY オーバーレイ**：操作・Tip・ESC で閉じる
-- **リザルト画面**：S/A/B/C ランクサークル＋脈動リング、ランクごとのコメント、最大コンボ含む 6 項目スコア、S/A 時は紙吹雪
-
-### プレイヤー操作の手触り
-- モダンプラットフォーマー風のジャンプ感：コヨーテタイム 120ms、ジャンプバッファ 130ms、可変高ジャンプ（離すと上昇カット）
-- 着地ダスト＋縦スクワッシュ、ジャンプ時の縦ストレッチ
-- ダメージ時：ノックバック・赤フラッシュ・無敵中の点滅
-- E キーは長押しオート取得（100ms 間隔）
-
-### プロギング体験
-- 5 種類のゴミ × 4 カテゴリ分別ボックス
-- F は「一致するゴミだけを投入」、残りは袋に残る
-- 拾った瞬間に「Clean!/Nice!/Sweep!/Pick!」のフレーバー、コンボに応じて GOOD!/NICE!/FIRE!/BURNING! の特大ラベル
-- **コンボ倍率**：1.0 → 1.2 → 1.5 → 2.0 → 2.5x
-- 投入時：ゴミがビンに吸い込まれる軌跡＋カメラフラッシュ＋効果音
-- 取り逃しは小さくクリーン度減
-
-### 演出
-- クリーン度で空の色が補間（曇り → 朝焼け）、上空帯も同期
-- 段階的に花が咲き、80%超で鳥とキラキラ
-- ゴール時：プレイヤーが跳ね、紙吹雪、「STAGE CLEAR!」「街がピカピカになった！」のバナー
-- 自前合成の効果音（拾う/コンボ拾う/分別成功/失敗/ジャンプ/着地/被弾/滑り/袋拡張/ゴールファンファーレ）
-
-### システム
-- スコア / コンボ / クリーン度 / ゴミ袋容量
-- 制限時間 120 秒 / ライフ 3 / 残り時間ボーナス + クリーン度ボーナス
-- HUD：スコア・クリーン度バー・時間・袋・コンボ・手持ち・ライフ・トースト
-- ポーズ（P）/ リスタート（R）
-- LocalStorage によるハイスコア保存
-- 仮素材は Phaser.Graphics、音声は WebAudio。**外部素材ゼロ**
-
----
-
-## 今後の改善案
-
-### ゲームデザイン
-- ステージ複数化（`src/game/data/levels.ts` を `LEVEL_2`, `LEVEL_3` … と追加）
-  - 公園 → 川沿い → 海辺 → 渋谷夜の繁華街、など雰囲気の異なる場面
-- ボス戦やランナー仲間との掛け合いステージ
-- ゴミの種類追加（電池・小型家電・落ち葉など）と分別の難易度調整
-- 「ナイスショット投入」ミニアクション（F 連打や狙いを定めるなど）
-
-### 演出
-- 拾い・分別の効果音（WebAudio で自動生成 → 効果音差し替え可能なサービス層を導入）
-- BGM レイヤ（クリーン度に応じてフィルタが開く等）
-- 走り・着地のスケルトンアニメーション or ピクセルアート差し替え
-
-### 操作・UX
-- スマートフォン向けタッチ UI
-  - `InputManager.setVirtualButton(name, down)` を呼ぶだけで動くよう設計済み
-  - 画面左下 = 移動、右下 = ジャンプ／拾う／分別 を `ui/TouchControls.ts` として追加
-- ゲームパッド対応
-- 効果音／BGM のミュートトグル
-- ステージセレクト画面
-
-### 技術
-- Vite の動的 import + manualChunks で Phaser をベンダーチャンク分離（バンドル分割）
-- Workbox 等で PWA 化、オフライン実行
-- 単体テスト（systems の純粋ロジックを vitest でカバー）
+| イベント | 表示 |
+|---|---|
+| ゴミを拾う | `+90`（黄色） |
+| コンボ達成 | `GOOD! / NICE! / FIRE! / BURNING!` ＋倍率バッジ |
+| 正しく分別 | `★ NICE SORT ×N` `+gain`（緑） |
+| 違うビン | トースト「ここでは投入できないよ…」 |
+| コンボ切れ | `COMBO BREAK`（薄赤） |
+| 障害物ヒット | `ライフ -1`（赤）＋画面シェイク |
+| 水たまり | `SLIP`（青） |
+| 袋満杯 | 頭上に `FULL!` ＋トースト「袋がいっぱい！…」 |
+| 袋容量UP | トースト「袋が大きくなった！ +2」 |
+| ゴール | バナー `STAGE CLEAR!` ＋紙吹雪 |
 
 ---
 
 ## 開発メモ
 
 - TypeScript は `strict: true`。`noUnusedLocals` / `noUnusedParameters` も有効
-- Phaser の `Sprite` は `input` プロパティを既に持っているため、Player クラスでは
-  入力管理を `inputMgr` フィールド名で保持しています
+- Phaser の `Sprite` は `input` プロパティを既に持つため、Player クラスでは入力管理を `inputMgr` フィールド名で保持
 - 障害物のうち `bicycle` / `crow` は **しゃがみ中なら回避可能**
-- 分別ボックスは「F を押すと袋の全件を一気に投入」する仕様で、
-  正解数／誤答数を集計してスコアとクリーン度に反映します
+- 分別ボックスは「合うゴミだけ投入、残りは袋に残す」仕様
+- BGM は WebAudio 自前合成。クリーン度 50% でメロディ、75% でハーモニーがフェードイン
 
 ---
 
