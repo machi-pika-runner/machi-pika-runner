@@ -106,17 +106,21 @@ npm run format  # Prettier
 
 ---
 
-## デプロイ（GitHub Pages）
+## デプロイ（Vercel）
 
-`.github/workflows/deploy.yml` 同梱。`main` または `master` に push すれば、自動で
-`npm ci → lint → test → build → Pages デプロイ` が走ります。
+Vercel と GitHub を連携してあり、`main` ブランチに push すれば自動で
+ビルド → デプロイされます。PR を作ると自動で Preview Deployment（独立 URL）も生成されます。
 
-リポジトリ側の準備（一度だけ）：
-1. **Settings → Pages → Build and deployment → Source** を **GitHub Actions** に
-2. push すると Actions タブから進行を確認できます
+公開 URL：
+`https://machi-pika-runner.vercel.app/`
 
-公開 URL（このリポジトリの場合）：
-`https://keigofukada.github.io/machi-pika-runner/`
+Vercel 側の設定（既に構成済み）：
+- Framework: Vite
+- Build Command: `npm run build`
+- Output Directory: `dist`
+- Install Command: `npm install`
+
+`vercel.json` で再現性のため上記をコミット済みです。
 
 ---
 
@@ -198,7 +202,7 @@ src/
 
 ```
 http://localhost:5173/?debug=1
-https://keigofukada.github.io/machi-pika-runner/?debug=1
+https://machi-pika-runner.vercel.app/?debug=1
 ```
 
 起動すると Console に以下が出ます：
