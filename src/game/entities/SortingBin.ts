@@ -61,7 +61,7 @@ export class SortingBin extends Phaser.Physics.Arcade.Sprite {
       .setDepth(Depth.Bin);
 
     this.prompt = scene.add
-      .text(x, GROUND_Y - 130, 'F: 分別する', {
+      .text(x, GROUND_Y - 130, '分別ボックス', {
         fontFamily: 'sans-serif',
         fontSize: '14px',
         color: '#ffffff',
@@ -76,6 +76,7 @@ export class SortingBin extends Phaser.Physics.Arcade.Sprite {
   // near: 近接しているか
   // matchingCount: このビンに投入できるゴミの数
   // bagHasItems: 袋に何か入っているか
+  // キー名は出さない（PC では F/Z/X、タッチでは B ボタンと、入力手段で違うため）。
   setReady(near: boolean, matchingCount: number, bagHasItems: boolean): void {
     if (!near || !bagHasItems) {
       this.prompt.setAlpha(0);
@@ -83,7 +84,7 @@ export class SortingBin extends Phaser.Physics.Arcade.Sprite {
     }
     this.prompt.setAlpha(1);
     if (matchingCount > 0) {
-      this.prompt.setText(`F: ${matchingCount}個 投入できる！`);
+      this.prompt.setText(`▼ ${matchingCount}個 投入できる！`);
       this.prompt.setBackgroundColor('#066c30');
       this.prompt.setColor('#ffffff');
     } else {
